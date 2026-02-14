@@ -12,7 +12,6 @@ import {
     AlignLeft,
     PanelRightClose,
     PanelRightOpen,
-    Edit3,
     File,
     Info,
     Plus,
@@ -20,12 +19,15 @@ import {
     MoreVertical,
     Trash2,
     Pencil,
-    Mic
+    Mic,
+    BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import Markdown from 'react-markdown';
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -37,7 +39,7 @@ import {
 
 type ViewMode = 'raw' | 'structured' | 'summary';
 
-// --- Вспомогательные компоненты (Вынесены наружу!) ---
+// --- Вспомогательные компоненты ---
 
 const StatusBadge = ({ status }: { status: NoteStatus }) => {
     const styles = {
@@ -56,7 +58,6 @@ const StatusBadge = ({ status }: { status: NoteStatus }) => {
     );
 };
 
-// Вынесли ActionButton из компонента
 const ActionButton = ({ viewMode, sourceType }: { viewMode: ViewMode, sourceType?: string }) => {
     if (viewMode === 'raw' && sourceType === 'AudioFile') {
         return (
@@ -95,12 +96,39 @@ export default function NoteWorkspace() {
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
     const [isRightSidebarOpen, setRightSidebarOpen] = useState(false);
 
+    // Состояния для редактора
+    const [isEditing, setIsEditing] = useState(false);
+    const [localContent, setLocalContent] = useState("");
+
+    // Состояние для заголовка
+    const [titleInput, setTitleInput] = useState("");
+
     const isCreating = id === 'new';
 
     const { data: note, isLoading, isError } = useQuery({
         queryKey: ['note', id],
         queryFn: () => notesApi.getById(id!),
         enabled: !!id && !isCreating,
+    });
+
+    // Единая мутация для сохранения изменений (Текст + Заголовок)
+    const saveChangesMutation = useMutation({
+        mutationFn: (data: { id: string, title: string, content: string, field: ViewMode }) => {
+            // Определяем имя поля контента
+            const contentField = data.field === 'raw' ? 'rawText' :
+                data.field === 'structured' ? 'structuredText' :
+                    'summaryText';
+
+            return (notesApi as any).update(data.id, {
+                title: data.title,
+                [contentField]: data.content
+            });
+        },
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['note', id] });
+            // Обновляем список, чтобы заголовок обновился в сайдбаре
+            await queryClient.invalidateQueries({ queryKey: ['notes'] });
+        }
     });
 
     const deleteMutation = useMutation({
@@ -116,16 +144,33 @@ export default function NoteWorkspace() {
         }
     });
 
-    const handleDelete = () => {
-        if (confirm("Вы уверены, что хотите удалить эту заметку?")) {
-            deleteMutation.mutate(id!);
+    useEffect(() => {
+        if (note) {
+            // Синхронизация контента
+            const content = (() => {
+                switch (viewMode) {
+                    case 'summary': return note.summaryText || "";
+                    case 'structured': return note.structuredText || "";
+                    case 'raw': default: return note.rawText || "";
+                }
+            })();
+            if (localContent !== content && !isEditing) {
+                setLocalContent(content);
+            }
+
+            // Синхронизация заголовка (только если не редактируем, чтобы не сбивать ввод)
+            if (titleInput !== note.title && !isEditing) {
+                setTitleInput(note.title || "");
+            }
         }
-    };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [note, viewMode, isEditing]); // Добавил isEditing, чтобы обновлять при выходе
 
     useEffect(() => {
         if (isCreating) {
             ensureActiveTab('new', 'Новая заметка', '/notes/new');
         } else if (note && id) {
+            // Обновляем вкладку, если заголовок изменился на сервере
             ensureActiveTab(id, note.title || "Без названия", `/notes/${id}`);
         }
     }, [note, id, isCreating, ensureActiveTab]);
@@ -139,31 +184,76 @@ export default function NoteWorkspace() {
         navigate(url);
     };
 
+    const handleDelete = () => {
+        if (confirm("Вы уверены, что хотите удалить эту заметку?")) {
+            deleteMutation.mutate(id!);
+        }
+    };
+
+    // Переключение режимов и СОХРАНЕНИЕ
+    const toggleEditMode = () => {
+        if (isEditing) {
+            // 1. Выходим из режима редактирования -> Сохраняем всё
+            if (note && id) {
+                saveChangesMutation.mutate({
+                    id,
+                    title: titleInput,
+                    content: localContent,
+                    field: viewMode
+                });
+            }
+            setIsEditing(false);
+        } else {
+            // 2. Входим в режим редактирования
+            setIsEditing(true);
+        }
+    };
+
     const renderContent = () => {
         if (isCreating) return <NoteCreator />;
         if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-zinc-400"/></div>;
         if (isError || !note) return <div className="flex h-full items-center justify-center text-zinc-400">Заметка не найдена</div>;
 
-        const text = (() => {
-            switch (viewMode) {
-                case 'summary': return note.summaryText || "Саммари еще не создано. Нажмите Summarize.";
-                case 'structured': return note.structuredText || "Структура еще не создана. Нажмите Structure.";
-                case 'raw': default: return note.rawText || "Исходный текст отсутствует.";
-            }
-        })();
-
         return (
-            <div className="max-w-4xl mx-auto p-8 lg:p-12">
-                <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none">
-                    {note.title}
-                </h1>
+            <div className="max-w-4xl mx-auto p-8 lg:p-12 h-full flex flex-col">
+
+                {/* ЗАГОЛОВОК ЗАМЕТКИ */}
+                {isEditing ? (
+                    // Режим редактирования: Инпут
+                    <input
+                        value={titleInput}
+                        onChange={(e) => setTitleInput(e.target.value)}
+                        className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none bg-transparent border-none w-full p-0 focus:ring-0 placeholder:text-zinc-300"
+                        placeholder="Без названия"
+                        autoFocus // Фокус на заголовок при входе (опционально)
+                    />
+                ) : (
+                    // Режим просмотра: Просто текст
+                    <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none cursor-default">
+                        {titleInput || "Без названия"}
+                    </h1>
+                )}
+
                 <div className={cn(
-                    "min-h-[50vh] outline-none",
-                    viewMode === 'raw' && "font-mono text-sm text-zinc-600 bg-zinc-50/50 p-6 rounded-lg border border-zinc-100 whitespace-pre-wrap leading-relaxed",
-                    viewMode === 'structured' && "prose prose-zinc max-w-none text-zinc-800 leading-7 whitespace-pre-wrap",
-                    viewMode === 'summary' && "prose prose-zinc max-w-none text-zinc-800 text-lg leading-relaxed whitespace-pre-wrap pl-4 border-l-4 border-indigo-100"
+                    "flex-1 outline-none relative",
+                    !isEditing && "prose prose-zinc max-w-none text-zinc-800 leading-7"
                 )}>
-                    {text}
+                    {isEditing ? (
+                        <Textarea
+                            value={localContent}
+                            onChange={(e) => setLocalContent(e.target.value)}
+                            className="w-full h-full min-h-[60vh] resize-none bg-transparent border-0 focus-visible:ring-0 p-0 text-base leading-relaxed font-mono text-zinc-800"
+                            placeholder="Начните писать..."
+                        />
+                    ) : (
+                        localContent ? (
+                            <Markdown>
+                                {localContent}
+                            </Markdown>
+                        ) : (
+                            <span className="text-zinc-400 italic">Нет содержимого</span>
+                        )
+                    )}
                 </div>
             </div>
         );
@@ -249,7 +339,6 @@ export default function NoteWorkspace() {
                             {/* ПРАВАЯ ЧАСТЬ */}
                             <div className="flex items-center gap-2">
 
-                                {/* Передаем пропсы в вынесенный компонент */}
                                 <ActionButton viewMode={viewMode} sourceType={note.sourceType} />
 
                                 <div className="flex items-center bg-zinc-100/80 rounded-md p-0.5 border border-zinc-200/50">
@@ -266,8 +355,29 @@ export default function NoteWorkspace() {
 
                                 <Separator orientation="vertical" className="h-4 mx-1 bg-zinc-200" />
 
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-zinc-500 gap-1.5 text-xs font-normal">
-                                    <Edit3 className="h-3.5 w-3.5" /> Edit
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={cn(
+                                        "h-7 px-2 gap-1.5 text-xs font-normal transition-colors",
+                                        isEditing
+                                            ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
+                                            : "text-zinc-500 hover:text-zinc-700"
+                                    )}
+                                    onClick={toggleEditMode}
+                                    title={isEditing ? "Сохранить и читать" : "Редактировать"}
+                                >
+                                    {isEditing ? (
+                                        <>
+                                            <BookOpen className="h-3.5 w-3.5" />
+                                            <span className="hidden sm:inline">Preview</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                            <span className="hidden sm:inline">Edit</span>
+                                        </>
+                                    )}
                                 </Button>
 
                                 <DropdownMenu>
@@ -277,10 +387,7 @@ export default function NoteWorkspace() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => console.log("Rename")}>
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            <span>Переименовать</span>
-                                        </DropdownMenuItem>
+                                        {/* Убрали кнопку "Переименовать" */}
                                         <DropdownMenuItem
                                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                             onClick={handleDelete}
@@ -309,6 +416,7 @@ export default function NoteWorkspace() {
                                     <div className="text-xs font-medium text-zinc-900">Свойства</div>
                                     <div className="space-y-2">
                                         <div className="flex justify-between text-xs"><span className="text-zinc-400">Создано</span><span className="text-zinc-600">{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span></div>
+                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">Обновлено</span><span className="text-zinc-600">{note.updatedAt ? format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm") : "-"}</span></div>
                                         <div className="flex justify-between text-xs"><span className="text-zinc-400">ID</span><span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]" title={note.id}>{note.id}</span></div>
                                     </div>
                                 </div>
