@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { notesApi } from "@/api/notes";
 import { NoteStatus } from "@/types/notes";
-import { useTabs } from "@/features/tabs/TabsContext"; // Импорт контекста
+import { useTabs } from "@/features/tabs/TabsContext";
+import { NoteCreator } from "@/features/notes/NoteCreator";
 import {
     Loader2,
     Sparkles,
@@ -14,8 +15,8 @@ import {
     Edit3,
     File,
     Info,
-    X,
-    Plus
+    Plus,
+    X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,6 @@ import { format } from "date-fns";
 type ViewMode = 'raw' | 'structured' | 'summary';
 
 // --- Вспомогательные компоненты ---
-
 const StatusBadge = ({ status }: { status: NoteStatus }) => {
     const styles = {
         'PendingResource': 'text-zinc-500 bg-zinc-100',
@@ -48,31 +48,41 @@ export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    // Подключаем контекст вкладок
-    const { tabs, addTab, closeTab, activeTabId } = useTabs();
+    // Используем ensureActiveTab
+    const { tabs, activeTabUid, setActiveTabUid, createNewTab, closeTab, ensureActiveTab } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
     const [isRightSidebarOpen, setRightSidebarOpen] = useState(false);
 
+    const isCreating = id === 'new';
+
     const { data: note, isLoading, isError } = useQuery({
         queryKey: ['note', id],
         queryFn: () => notesApi.getById(id!),
-        enabled: !!id,
+        enabled: !!id && !isCreating,
     });
 
-    // Эффект: Когда загрузилась заметка, добавляем её во вкладки
+    // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
+    // Этот эффект теперь безопасен, так как ensureActiveTab мемоизирована
     useEffect(() => {
-        if (note && id) {
-            addTab({
-                id: id,
-                title: note.title || "Без названия",
-                url: `/notes/${id}`
-            });
+        if (isCreating) {
+            ensureActiveTab('new', 'Новая заметка', '/notes/new');
+        } else if (note && id) {
+            ensureActiveTab(id, note.title || "Без названия", `/notes/${id}`);
         }
-    }, [note, id, addTab]);
+    }, [note, id, isCreating, ensureActiveTab]);
 
-    // Обработка загрузки/ошибки (оставляем внутри layout, чтобы вкладки не пропадали)
-    const content = () => {
+    const handleCreateNew = () => {
+        createNewTab();
+    };
+
+    const handleTabClick = (uid: string, url: string) => {
+        setActiveTabUid(uid);
+        navigate(url);
+    };
+
+    const renderContent = () => {
+        if (isCreating) return <NoteCreator />;
         if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-zinc-400"/></div>;
         if (isError || !note) return <div className="flex h-full items-center justify-center text-zinc-400">Заметка не найдена</div>;
 
@@ -104,19 +114,16 @@ export default function NoteWorkspace() {
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-white">
 
-            {/* ====================================================================================
-               1. TAB BAR (Динамические вкладки)
-               ==================================================================================== */}
+            {/* 1. TAB BAR */}
             <div className="h-10 bg-zinc-100/80 flex items-end justify-between px-2 border-b border-zinc-200 select-none flex-shrink-0 gap-2">
 
-                {/* Список вкладок */}
                 <div className="flex items-end flex-1 overflow-x-auto no-scrollbar mask-gradient-right">
                     {tabs.map((tab) => {
-                        const isActive = tab.id === activeTabId;
+                        const isActive = tab.uid === activeTabUid;
                         return (
                             <div
-                                key={tab.id}
-                                onClick={() => navigate(tab.url)}
+                                key={tab.uid}
+                                onClick={() => handleTabClick(tab.uid, tab.url)}
                                 className={cn(
                                     "group relative flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] cursor-pointer text-xs font-medium border-t border-x rounded-t-md transition-all mr-[-1px]",
                                     isActive
@@ -127,10 +134,9 @@ export default function NoteWorkspace() {
                                 <File className={cn("h-3 w-3 shrink-0", isActive ? "text-blue-500" : "text-zinc-400")} />
                                 <span className="truncate flex-1">{tab.title}</span>
 
-                                {/* Кнопка закрытия вкладки (появляется при наведении или если активна) */}
                                 <div
                                     role="button"
-                                    onClick={(e) => closeTab(e, tab.id)}
+                                    onClick={(e) => closeTab(e, tab.uid)}
                                     className={cn(
                                         "opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-zinc-200 transition-opacity",
                                         isActive && "opacity-100"
@@ -142,39 +148,27 @@ export default function NoteWorkspace() {
                         );
                     })}
 
-                    {/* Кнопка "Плюс" (Новая заметка) */}
                     <div
-                        onClick={() => navigate('/')}
+                        onClick={handleCreateNew}
                         className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-md hover:bg-zinc-200 cursor-pointer text-zinc-500 transition-colors"
-                        title="Новая заметка"
+                        title="Новая вкладка"
                     >
                         <Plus className="h-4 w-4" />
                     </div>
                 </div>
 
-                {/* Кнопка правой панели */}
                 <div className="pb-1.5 pl-2 border-l border-zinc-200/50">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-zinc-400 hover:text-zinc-700"
-                        onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-700" onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}>
                         {isRightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                     </Button>
                 </div>
             </div>
 
-            {/* ====================================================================================
-               MAIN SPLIT AREA
-               ==================================================================================== */}
+            {/* MAIN SPLIT AREA */}
             <div className="flex-1 flex overflow-hidden">
-
-                {/* --- ЛЕВАЯ ЧАСТЬ --- */}
                 <div className="flex-1 flex flex-col min-w-0 bg-white">
-
-                    {/* 2. TOOLBAR (Отображаем только если заметка загружена) */}
-                    {note && (
+                    {/* Toolbar */}
+                    {!isCreating && note && (
                         <div className="h-10 border-b border-zinc-100 bg-white flex items-center justify-between px-4 flex-shrink-0 select-none">
                             <div className="flex items-center gap-3">
                                 <StatusBadge status={note.status} />
@@ -183,7 +177,6 @@ export default function NoteWorkspace() {
                                     {note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}
                                 </span>
                             </div>
-
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center bg-zinc-100/80 rounded-md p-0.5 border border-zinc-200/50">
                                     <button onClick={() => setViewMode('raw')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'raw' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500")}>
@@ -203,15 +196,10 @@ export default function NoteWorkspace() {
                             </div>
                         </div>
                     )}
-
-                    {/* 3. CONTENT */}
-                    <ScrollArea className="flex-1">
-                        {content()}
-                    </ScrollArea>
+                    <ScrollArea className="flex-1">{renderContent()}</ScrollArea>
                 </div>
 
-                {/* --- ПРАВАЯ ПАНЕЛЬ --- */}
-                {note && (
+                {!isCreating && note && (
                     <aside className={cn("bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 ease-in-out overflow-hidden flex flex-col backdrop-blur-sm flex-shrink-0", isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0")}>
                         <div className="h-9 border-b border-zinc-200/50 flex items-center px-4 flex-shrink-0">
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
@@ -224,7 +212,7 @@ export default function NoteWorkspace() {
                                     <div className="text-xs font-medium text-zinc-900">Свойства</div>
                                     <div className="space-y-2">
                                         <div className="flex justify-between text-xs"><span className="text-zinc-400">Создано</span><span className="text-zinc-600">{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span></div>
-                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">Обновлено</span><span className="text-zinc-600">{note.updatedAt ? format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm") : "-"}</span></div>
+                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">ID</span><span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]" title={note.id}>{note.id}</span></div>
                                     </div>
                                 </div>
                             </div>
