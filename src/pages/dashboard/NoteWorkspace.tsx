@@ -1,0 +1,237 @@
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { notesApi } from "@/api/notes";
+import { NoteStatus } from "@/types/notes";
+import { useTabs } from "@/features/tabs/TabsContext"; // Импорт контекста
+import {
+    Loader2,
+    Sparkles,
+    FileJson,
+    AlignLeft,
+    PanelRightClose,
+    PanelRightOpen,
+    Edit3,
+    File,
+    Info,
+    X,
+    Plus
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { format } from "date-fns";
+
+type ViewMode = 'raw' | 'structured' | 'summary';
+
+// --- Вспомогательные компоненты ---
+
+const StatusBadge = ({ status }: { status: NoteStatus }) => {
+    const styles = {
+        'PendingResource': 'text-zinc-500 bg-zinc-100',
+        'Processing': 'text-blue-600 bg-blue-50',
+        'Failed': 'text-red-600 bg-red-50',
+        'Raw': 'text-orange-600 bg-orange-50',
+        'Structured': 'text-purple-600 bg-purple-50',
+        'Completed': 'text-green-600 bg-green-50',
+    }[status] || 'text-zinc-500 bg-zinc-100';
+
+    return (
+        <span className={cn("text-[10px] px-2 py-0.5 rounded-sm font-medium border border-transparent select-none", styles)}>
+            {status}
+        </span>
+    );
+};
+
+export default function NoteWorkspace() {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+
+    // Подключаем контекст вкладок
+    const { tabs, addTab, closeTab, activeTabId } = useTabs();
+
+    const [viewMode, setViewMode] = useState<ViewMode>('structured');
+    const [isRightSidebarOpen, setRightSidebarOpen] = useState(false);
+
+    const { data: note, isLoading, isError } = useQuery({
+        queryKey: ['note', id],
+        queryFn: () => notesApi.getById(id!),
+        enabled: !!id,
+    });
+
+    // Эффект: Когда загрузилась заметка, добавляем её во вкладки
+    useEffect(() => {
+        if (note && id) {
+            addTab({
+                id: id,
+                title: note.title || "Без названия",
+                url: `/notes/${id}`
+            });
+        }
+    }, [note, id, addTab]);
+
+    // Обработка загрузки/ошибки (оставляем внутри layout, чтобы вкладки не пропадали)
+    const content = () => {
+        if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-zinc-400"/></div>;
+        if (isError || !note) return <div className="flex h-full items-center justify-center text-zinc-400">Заметка не найдена</div>;
+
+        const text = (() => {
+            switch (viewMode) {
+                case 'summary': return note.summaryText || "Саммари отсутствует.";
+                case 'structured': return note.structuredText || "Структурированный текст отсутствует.";
+                case 'raw': default: return note.rawText || "Исходный текст отсутствует.";
+            }
+        })();
+
+        return (
+            <div className="max-w-4xl mx-auto p-8 lg:p-12">
+                <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none">
+                    {note.title}
+                </h1>
+                <div className={cn(
+                    "min-h-[50vh] outline-none",
+                    viewMode === 'raw' && "font-mono text-sm text-zinc-600 bg-zinc-50/50 p-6 rounded-lg border border-zinc-100 whitespace-pre-wrap leading-relaxed",
+                    viewMode === 'structured' && "prose prose-zinc max-w-none text-zinc-800 leading-7 whitespace-pre-wrap",
+                    viewMode === 'summary' && "prose prose-zinc max-w-none text-zinc-800 text-lg leading-relaxed whitespace-pre-wrap pl-4 border-l-4 border-indigo-100"
+                )}>
+                    {text}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="flex flex-col h-full w-full overflow-hidden bg-white">
+
+            {/* ====================================================================================
+               1. TAB BAR (Динамические вкладки)
+               ==================================================================================== */}
+            <div className="h-10 bg-zinc-100/80 flex items-end justify-between px-2 border-b border-zinc-200 select-none flex-shrink-0 gap-2">
+
+                {/* Список вкладок */}
+                <div className="flex items-end flex-1 overflow-x-auto no-scrollbar mask-gradient-right">
+                    {tabs.map((tab) => {
+                        const isActive = tab.id === activeTabId;
+                        return (
+                            <div
+                                key={tab.id}
+                                onClick={() => navigate(tab.url)}
+                                className={cn(
+                                    "group relative flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] cursor-pointer text-xs font-medium border-t border-x rounded-t-md transition-all mr-[-1px]",
+                                    isActive
+                                        ? "bg-white border-zinc-200 text-zinc-800 z-10 shadow-sm"
+                                        : "bg-zinc-100 border-transparent text-zinc-500 hover:bg-zinc-200/50"
+                                )}
+                            >
+                                <File className={cn("h-3 w-3 shrink-0", isActive ? "text-blue-500" : "text-zinc-400")} />
+                                <span className="truncate flex-1">{tab.title}</span>
+
+                                {/* Кнопка закрытия вкладки (появляется при наведении или если активна) */}
+                                <div
+                                    role="button"
+                                    onClick={(e) => closeTab(e, tab.id)}
+                                    className={cn(
+                                        "opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-zinc-200 transition-opacity",
+                                        isActive && "opacity-100"
+                                    )}
+                                >
+                                    <X className="h-3 w-3 text-zinc-400 hover:text-zinc-700" />
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {/* Кнопка "Плюс" (Новая заметка) */}
+                    <div
+                        onClick={() => navigate('/')}
+                        className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-md hover:bg-zinc-200 cursor-pointer text-zinc-500 transition-colors"
+                        title="Новая заметка"
+                    >
+                        <Plus className="h-4 w-4" />
+                    </div>
+                </div>
+
+                {/* Кнопка правой панели */}
+                <div className="pb-1.5 pl-2 border-l border-zinc-200/50">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-zinc-400 hover:text-zinc-700"
+                        onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}
+                    >
+                        {isRightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                    </Button>
+                </div>
+            </div>
+
+            {/* ====================================================================================
+               MAIN SPLIT AREA
+               ==================================================================================== */}
+            <div className="flex-1 flex overflow-hidden">
+
+                {/* --- ЛЕВАЯ ЧАСТЬ --- */}
+                <div className="flex-1 flex flex-col min-w-0 bg-white">
+
+                    {/* 2. TOOLBAR (Отображаем только если заметка загружена) */}
+                    {note && (
+                        <div className="h-10 border-b border-zinc-100 bg-white flex items-center justify-between px-4 flex-shrink-0 select-none">
+                            <div className="flex items-center gap-3">
+                                <StatusBadge status={note.status} />
+                                <Separator orientation="vertical" className="h-3 bg-zinc-200" />
+                                <span className="text-[10px] text-zinc-400 uppercase tracking-wide">
+                                    {note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center bg-zinc-100/80 rounded-md p-0.5 border border-zinc-200/50">
+                                    <button onClick={() => setViewMode('raw')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'raw' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500")}>
+                                        <AlignLeft className="h-3 w-3" /> Raw
+                                    </button>
+                                    <button onClick={() => setViewMode('structured')} disabled={!note.structuredText} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'structured' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500", !note.structuredText && "opacity-40 cursor-not-allowed")}>
+                                        <FileJson className="h-3 w-3" /> Structured
+                                    </button>
+                                    <button onClick={() => setViewMode('summary')} disabled={!note.summaryText} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'summary' ? "bg-white text-indigo-600 shadow-sm" : "text-zinc-500", !note.summaryText && "opacity-40 cursor-not-allowed")}>
+                                        <Sparkles className="h-3 w-3" /> Summary
+                                    </button>
+                                </div>
+                                <Separator orientation="vertical" className="h-4 mx-1 bg-zinc-200" />
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-zinc-500 gap-1.5 text-xs font-normal">
+                                    <Edit3 className="h-3.5 w-3.5" /> Edit
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 3. CONTENT */}
+                    <ScrollArea className="flex-1">
+                        {content()}
+                    </ScrollArea>
+                </div>
+
+                {/* --- ПРАВАЯ ПАНЕЛЬ --- */}
+                {note && (
+                    <aside className={cn("bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 ease-in-out overflow-hidden flex flex-col backdrop-blur-sm flex-shrink-0", isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0")}>
+                        <div className="h-9 border-b border-zinc-200/50 flex items-center px-4 flex-shrink-0">
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                                <Info className="h-3 w-3" /> Info
+                            </span>
+                        </div>
+                        <ScrollArea className="flex-1 p-4">
+                            <div className="space-y-6">
+                                <div className="space-y-3">
+                                    <div className="text-xs font-medium text-zinc-900">Свойства</div>
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">Создано</span><span className="text-zinc-600">{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span></div>
+                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">Обновлено</span><span className="text-zinc-600">{note.updatedAt ? format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm") : "-"}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    </aside>
+                )}
+            </div>
+        </div>
+    );
+}

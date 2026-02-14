@@ -34,7 +34,7 @@ export const MainLayout = () => {
                     </div>
                 )}
 
-                {/* Здесь отрисовываются: HomePage, SearchPage или NoteDetailsPage */}
+                {/* Здесь отрисовываются: HomePage, SearchPage или NoteWorkspace */}
                 <Outlet />
             </main>
         </div>
