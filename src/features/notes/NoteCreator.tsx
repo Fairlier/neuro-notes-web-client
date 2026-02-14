@@ -5,16 +5,11 @@ import { notesApi } from "@/api/notes";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ArrowUp, Loader2, Mic, Paperclip, Image as ImageIcon } from "lucide-react";
-// Импорт useTabs больше не нужен
-// import { useTabs } from "@/features/tabs/TabsContext";
 
 export function NoteCreator() {
     const [input, setInput] = useState("");
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-
-    // УДАЛЕНО: const { closeTab, activeTabUid } = useTabs();
-    // Нам здесь ничего не нужно от табов, мы просто меняем URL.
 
     const createMutation = useMutation({
         mutationFn: notesApi.createDirectText,

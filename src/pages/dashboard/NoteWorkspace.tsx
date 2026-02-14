@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notesApi } from "@/api/notes";
 import { NoteStatus } from "@/types/notes";
 import { useTabs } from "@/features/tabs/TabsContext";
@@ -16,17 +16,29 @@ import {
     File,
     Info,
     Plus,
-    X
+    X,
+    MoreVertical,
+    Trash2,
+    Pencil,
+    Mic
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type ViewMode = 'raw' | 'structured' | 'summary';
 
-// --- Вспомогательные компоненты ---
+// --- Вспомогательные компоненты (Вынесены наружу!) ---
+
 const StatusBadge = ({ status }: { status: NoteStatus }) => {
     const styles = {
         'PendingResource': 'text-zinc-500 bg-zinc-100',
@@ -44,11 +56,40 @@ const StatusBadge = ({ status }: { status: NoteStatus }) => {
     );
 };
 
+// Вынесли ActionButton из компонента
+const ActionButton = ({ viewMode, sourceType }: { viewMode: ViewMode, sourceType?: string }) => {
+    if (viewMode === 'raw' && sourceType === 'AudioFile') {
+        return (
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm">
+                <Mic className="h-3.5 w-3.5 text-blue-500" />
+                Transcribe
+            </Button>
+        );
+    }
+    if (viewMode === 'structured') {
+        return (
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm">
+                <FileJson className="h-3.5 w-3.5 text-purple-500" />
+                Structure
+            </Button>
+        );
+    }
+    if (viewMode === 'summary') {
+        return (
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm">
+                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+                Summarize
+            </Button>
+        );
+    }
+    return null;
+};
+
 export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
-    // Используем ensureActiveTab
     const { tabs, activeTabUid, setActiveTabUid, createNewTab, closeTab, ensureActiveTab } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
@@ -62,8 +103,25 @@ export default function NoteWorkspace() {
         enabled: !!id && !isCreating,
     });
 
-    // --- КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ ---
-    // Этот эффект теперь безопасен, так как ensureActiveTab мемоизирована
+    const deleteMutation = useMutation({
+        mutationFn: notesApi.delete,
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['notes'] });
+            if (activeTabUid) {
+                closeTab(null, activeTabUid);
+            }
+        },
+        onError: (err) => {
+            console.error("Ошибка при удалении:", err);
+        }
+    });
+
+    const handleDelete = () => {
+        if (confirm("Вы уверены, что хотите удалить эту заметку?")) {
+            deleteMutation.mutate(id!);
+        }
+    };
+
     useEffect(() => {
         if (isCreating) {
             ensureActiveTab('new', 'Новая заметка', '/notes/new');
@@ -88,8 +146,8 @@ export default function NoteWorkspace() {
 
         const text = (() => {
             switch (viewMode) {
-                case 'summary': return note.summaryText || "Саммари отсутствует.";
-                case 'structured': return note.structuredText || "Структурированный текст отсутствует.";
+                case 'summary': return note.summaryText || "Саммари еще не создано. Нажмите Summarize.";
+                case 'structured': return note.structuredText || "Структура еще не создана. Нажмите Structure.";
                 case 'raw': default: return note.rawText || "Исходный текст отсутствует.";
             }
         })();
@@ -116,7 +174,6 @@ export default function NoteWorkspace() {
 
             {/* 1. TAB BAR */}
             <div className="h-10 bg-zinc-100/80 flex items-end justify-between px-2 border-b border-zinc-200 select-none flex-shrink-0 gap-2">
-
                 <div className="flex items-end flex-1 overflow-x-auto no-scrollbar mask-gradient-right">
                     {tabs.map((tab) => {
                         const isActive = tab.uid === activeTabUid;
@@ -167,32 +224,72 @@ export default function NoteWorkspace() {
             {/* MAIN SPLIT AREA */}
             <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 flex flex-col min-w-0 bg-white">
+
                     {/* Toolbar */}
                     {!isCreating && note && (
                         <div className="h-10 border-b border-zinc-100 bg-white flex items-center justify-between px-4 flex-shrink-0 select-none">
+
+                            {/* ЛЕВАЯ ЧАСТЬ */}
                             <div className="flex items-center gap-3">
                                 <StatusBadge status={note.status} />
+
                                 <Separator orientation="vertical" className="h-3 bg-zinc-200" />
                                 <span className="text-[10px] text-zinc-400 uppercase tracking-wide">
                                     {note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}
                                 </span>
+
+                                <span className="text-[10px] text-zinc-400 select-none">
+                                    {note.updatedAt
+                                        ? format(new Date(note.updatedAt), "d MMM, HH:mm", { locale: ru })
+                                        : format(new Date(note.createdAt), "d MMM, HH:mm", { locale: ru })
+                                    }
+                                </span>
                             </div>
+
+                            {/* ПРАВАЯ ЧАСТЬ */}
                             <div className="flex items-center gap-2">
+
+                                {/* Передаем пропсы в вынесенный компонент */}
+                                <ActionButton viewMode={viewMode} sourceType={note.sourceType} />
+
                                 <div className="flex items-center bg-zinc-100/80 rounded-md p-0.5 border border-zinc-200/50">
-                                    <button onClick={() => setViewMode('raw')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'raw' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500")}>
+                                    <button onClick={() => setViewMode('raw')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'raw' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900")}>
                                         <AlignLeft className="h-3 w-3" /> Raw
                                     </button>
-                                    <button onClick={() => setViewMode('structured')} disabled={!note.structuredText} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'structured' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500", !note.structuredText && "opacity-40 cursor-not-allowed")}>
+                                    <button onClick={() => setViewMode('structured')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'structured' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900")}>
                                         <FileJson className="h-3 w-3" /> Structured
                                     </button>
-                                    <button onClick={() => setViewMode('summary')} disabled={!note.summaryText} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'summary' ? "bg-white text-indigo-600 shadow-sm" : "text-zinc-500", !note.summaryText && "opacity-40 cursor-not-allowed")}>
+                                    <button onClick={() => setViewMode('summary')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'summary' ? "bg-white text-indigo-600 shadow-sm" : "text-zinc-500 hover:text-zinc-900")}>
                                         <Sparkles className="h-3 w-3" /> Summary
                                     </button>
                                 </div>
+
                                 <Separator orientation="vertical" className="h-4 mx-1 bg-zinc-200" />
+
                                 <Button variant="ghost" size="sm" className="h-7 px-2 text-zinc-500 gap-1.5 text-xs font-normal">
                                     <Edit3 className="h-3.5 w-3.5" /> Edit
                                 </Button>
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-700">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => console.log("Rename")}>
+                                            <Pencil className="mr-2 h-4 w-4" />
+                                            <span>Переименовать</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                            onClick={handleDelete}
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            <span>Удалить</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     )}

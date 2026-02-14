@@ -44,7 +44,7 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
             const newTab: Tab = {
                 uid: newUid,
                 noteId: noteId,
-                title: noteId === 'new' ? 'Новая заметка' : 'Загрузка...',
+                title: noteId === 'new' ? 'Новая вкладка' : 'Загрузка...',
                 url: location.pathname
             };
             setTabs([newTab]);
@@ -59,7 +59,7 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
         const newTab: Tab = {
             uid: newUid,
             noteId: 'new',
-            title: 'Новая заметка',
+            title: 'Новая вкладка',
             url: '/notes/new'
         };
         setTabs(prev => [...prev, newTab]);
@@ -118,7 +118,7 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
             const newTab = {
                 uid: newUid,
                 noteId: 'new',
-                title: 'Новая заметка',
+                title: 'Новая вкладка',
                 url: '/notes/new'
             };
 
