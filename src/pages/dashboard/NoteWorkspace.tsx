@@ -96,11 +96,9 @@ export default function NoteWorkspace() {
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
     const [isRightSidebarOpen, setRightSidebarOpen] = useState(false);
 
-    // Состояния для редактора
+    // Состояния
     const [isEditing, setIsEditing] = useState(false);
     const [localContent, setLocalContent] = useState("");
-
-    // Состояние для заголовка
     const [titleInput, setTitleInput] = useState("");
 
     const isCreating = id === 'new';
@@ -111,22 +109,21 @@ export default function NoteWorkspace() {
         enabled: !!id && !isCreating,
     });
 
-    // Единая мутация для сохранения изменений (Текст + Заголовок)
+    // Единая мутация для сохранения изменений (Заголовок + Текст)
     const saveChangesMutation = useMutation({
         mutationFn: (data: { id: string, title: string, content: string, field: ViewMode }) => {
-            // Определяем имя поля контента
             const contentField = data.field === 'raw' ? 'rawText' :
                 data.field === 'structured' ? 'structuredText' :
                     'summaryText';
 
-            return (notesApi as any).update(data.id, {
+            // Теперь TypeScript знает метод update
+            return notesApi.update(data.id, {
                 title: data.title,
                 [contentField]: data.content
             });
         },
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['note', id] });
-            // Обновляем список, чтобы заголовок обновился в сайдбаре
             await queryClient.invalidateQueries({ queryKey: ['notes'] });
         }
     });
@@ -146,7 +143,6 @@ export default function NoteWorkspace() {
 
     useEffect(() => {
         if (note) {
-            // Синхронизация контента
             const content = (() => {
                 switch (viewMode) {
                     case 'summary': return note.summaryText || "";
@@ -154,23 +150,22 @@ export default function NoteWorkspace() {
                     case 'raw': default: return note.rawText || "";
                 }
             })();
+
             if (localContent !== content && !isEditing) {
                 setLocalContent(content);
             }
 
-            // Синхронизация заголовка (только если не редактируем, чтобы не сбивать ввод)
             if (titleInput !== note.title && !isEditing) {
                 setTitleInput(note.title || "");
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [note, viewMode, isEditing]); // Добавил isEditing, чтобы обновлять при выходе
+    }, [note, viewMode, isEditing]);
 
     useEffect(() => {
         if (isCreating) {
             ensureActiveTab('new', 'Новая заметка', '/notes/new');
         } else if (note && id) {
-            // Обновляем вкладку, если заголовок изменился на сервере
             ensureActiveTab(id, note.title || "Без названия", `/notes/${id}`);
         }
     }, [note, id, isCreating, ensureActiveTab]);
@@ -190,10 +185,9 @@ export default function NoteWorkspace() {
         }
     };
 
-    // Переключение режимов и СОХРАНЕНИЕ
     const toggleEditMode = () => {
         if (isEditing) {
-            // 1. Выходим из режима редактирования -> Сохраняем всё
+            // Выход из режима редактирования -> Сохраняем и заголовок, и текст
             if (note && id) {
                 saveChangesMutation.mutate({
                     id,
@@ -204,7 +198,7 @@ export default function NoteWorkspace() {
             }
             setIsEditing(false);
         } else {
-            // 2. Входим в режим редактирования
+            // Вход в режим редактирования
             setIsEditing(true);
         }
     };
@@ -217,7 +211,7 @@ export default function NoteWorkspace() {
         return (
             <div className="max-w-4xl mx-auto p-8 lg:p-12 h-full flex flex-col">
 
-                {/* ЗАГОЛОВОК ЗАМЕТКИ */}
+                {/* ЗАГОЛОВОК */}
                 {isEditing ? (
                     // Режим редактирования: Инпут
                     <input
@@ -225,10 +219,9 @@ export default function NoteWorkspace() {
                         onChange={(e) => setTitleInput(e.target.value)}
                         className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none bg-transparent border-none w-full p-0 focus:ring-0 placeholder:text-zinc-300"
                         placeholder="Без названия"
-                        autoFocus // Фокус на заголовок при входе (опционально)
                     />
                 ) : (
-                    // Режим просмотра: Просто текст
+                    // Режим просмотра: Текст (не редактируется)
                     <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none cursor-default">
                         {titleInput || "Без названия"}
                     </h1>
@@ -387,7 +380,6 @@ export default function NoteWorkspace() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        {/* Убрали кнопку "Переименовать" */}
                                         <DropdownMenuItem
                                             className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                             onClick={handleDelete}

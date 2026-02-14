@@ -3,8 +3,15 @@ import type {
     NoteListResponse,
     CreateDirectTextRequest,
     CreateNoteResponse,
-    NoteDetailsDto // <-- Добавили импорт
+    NoteDetailsDto
 } from '@/types/notes';
+
+export interface UpdateNoteRequest {
+    title?: string;
+    rawText?: string;
+    structuredText?: string;
+    summaryText?: string;
+}
 
 export const notesApi = {
     getAll: async () => {
@@ -19,6 +26,12 @@ export const notesApi = {
 
     createDirectText: async (payload: CreateDirectTextRequest) => {
         const { data } = await api.post<CreateNoteResponse>('/notes/directText', payload);
+        return data;
+    },
+
+    update: async (id: string, payload: UpdateNoteRequest) => {
+        // Используем patch для частичного обновления
+        const { data } = await api.patch<void>(`/notes/${id}`, payload);
         return data;
     },
 
