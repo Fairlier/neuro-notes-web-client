@@ -2,22 +2,29 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
+
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
-import NotesPage from "@/pages/dashboard/NotesPage";
+import HomePage from "@/pages/dashboard/HomePage";
+import NoteDetailsPage from "@/pages/dashboard/NoteDetailsPage";
 
 function App() {
     return (
         <AuthProvider>
             <Routes>
-                {/* Публичные маршруты */}
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
 
-                {/* Приватные маршруты */}
                 <Route element={<ProtectedRoute />}>
                     <Route element={<MainLayout />}>
-                        <Route path="/" element={<NotesPage />} />
+                        {/* Главная: Создание новой заметки (как в Arena) */}
+                        <Route path="/" element={<HomePage />} />
+
+                        {/* Просмотр конкретной заметки */}
+                        <Route path="/notes/:id" element={<NoteDetailsPage />} />
+
+                        {/* Поиск */}
+                        <Route path="/search" element={<div className="p-8">Страница поиска (в разработке)</div>} />
                     </Route>
                 </Route>
 

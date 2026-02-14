@@ -2,7 +2,8 @@ import api from './axios';
 import type {
     NoteListResponse,
     CreateDirectTextRequest,
-    CreateNoteResponse
+    CreateNoteResponse,
+    NoteDetailsDto // <-- Добавили импорт
 } from '@/types/notes';
 
 export const notesApi = {
@@ -12,7 +13,7 @@ export const notesApi = {
     },
 
     getById: async (id: string) => {
-        const { data } = await api.get(`/notes/${id}`);
+        const { data } = await api.get<NoteDetailsDto>(`/notes/${id}`);
         return data;
     },
 

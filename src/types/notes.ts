@@ -26,6 +26,20 @@ export interface NoteListItemDto {
     updatedAt?: string;
 }
 
+export interface NoteDetailsDto {
+    id: string;
+    title: string;
+    sourceType: NoteSourceType;
+    status: NoteStatus;
+
+    rawText?: string;
+    structuredText?: string;
+    summaryText?: string;
+
+    createdAt: string;
+    updatedAt?: string;
+}
+
 export interface NoteListResponse {
     notes: NoteListItemDto[];
 }
