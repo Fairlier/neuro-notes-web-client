@@ -15,7 +15,8 @@ import {
     Loader2,
     Settings,
     User,
-    ChevronRight
+    ChevronRight,
+    MessageSquare // Иконка чата
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -50,10 +51,8 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 isOpen ? "w-[280px]" : "w-[70px]"
             )}
         >
-            {/* --- 1. ШАПКА --- */}
+            {/* 1. ШАПКА */}
             <div className={cn("flex items-center h-14 px-3 flex-shrink-0 transition-all duration-300", isOpen ? "justify-between" : "justify-center")}>
-
-                {/* Логотип */}
                 <div className={cn(
                     "flex items-center gap-2 font-bold text-zinc-800 select-none overflow-hidden transition-all duration-300",
                     isOpen ? "w-auto opacity-100" : "w-0 opacity-0 hidden"
@@ -64,19 +63,38 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     <span className="whitespace-nowrap tracking-tight">NeuroNotes</span>
                 </div>
 
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggle}
-                    className="text-zinc-400 hover:text-zinc-700 h-8 w-8"
-                    title={isOpen ? "Свернуть" : "Развернуть"}
-                >
+                <Button variant="ghost" size="icon" onClick={toggle} className="text-zinc-400 hover:text-zinc-700 h-8 w-8">
                     {isOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
                 </Button>
             </div>
 
-            {/* --- 2. ДЕЙСТВИЯ (Верхние) --- */}
+            {/* 2. ДЕЙСТВИЯ */}
             <div className="p-3 flex flex-col gap-2 flex-shrink-0">
+
+                {/* --- ССЫЛКА НА ОБЩИЙ ЧАТ --- */}
+                <Link to="/chat" className="block">
+                    <Button
+                        // Подсветка, если мы на странице чата
+                        variant={location.pathname === "/chat" ? "secondary" : "ghost"}
+                        className={cn(
+                            "h-10 transition-all duration-300 overflow-hidden border border-transparent",
+                            location.pathname === "/chat"
+                                ? "bg-zinc-200 text-zinc-900"
+                                : "hover:bg-indigo-50 hover:text-indigo-600 text-zinc-600",
+                            isOpen ? "w-full justify-start gap-2 px-4" : "w-10 justify-center px-0 mx-auto"
+                        )}
+                        title={!isOpen ? "Общий чат" : undefined}
+                    >
+                        <MessageSquare className="h-5 w-5 shrink-0" />
+                        <span className={cn(
+                            "truncate transition-all duration-300",
+                            isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 hidden"
+                        )}>
+                            Общий чат
+                        </span>
+                    </Button>
+                </Link>
+
                 <Link to="/" className="block">
                     <Button
                         variant={location.pathname === "/" ? "secondary" : "ghost"}
@@ -119,14 +137,13 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
             <Separator className="bg-zinc-200 w-auto mx-3 mt-2" />
 
-            {/* --- 3. СПИСОК ЗАМЕТОК --- */}
+            {/* 3. СПИСОК ЗАМЕТОК (Без изменений) */}
             <ScrollArea className="flex-1 py-4 px-3">
                 {isOpen && (
                     <div className="px-2 mb-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider animate-in fade-in duration-300">
                         История
                     </div>
                 )}
-
                 {isOpen ? (
                     <>
                         {isLoading ? (
@@ -163,10 +180,8 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 )}
             </ScrollArea>
 
-            {/* --- 4. ПОДВАЛ: Настройки и Профиль --- */}
+            {/* 4. ПОДВАЛ (Без изменений) */}
             <div className="p-3 border-t border-zinc-200 bg-zinc-50/50 flex flex-col gap-1 flex-shrink-0">
-
-                {/* Кнопка Настройки (Над профилем) */}
                 <Link to="/settings" className="block">
                     <Button
                         variant="ghost"
@@ -186,7 +201,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     </Button>
                 </Link>
 
-                {/* Профиль пользователя */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
@@ -196,12 +210,9 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                 isOpen ? "justify-start px-2 h-12 gap-3" : "justify-center px-0 h-10 w-10 rounded-full mx-auto"
                             )}
                         >
-                            {/* Аватарка */}
-                            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center shrink-0 text-white font-semibold text-xs shadow-sm ring-2 ring-white group-hover:ring-zinc-200 transition-all">
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center shrink-0 text-white font-semibold text-xs shadow-sm ring-2 ring-white">
                                 {user?.email?.charAt(0).toUpperCase()}
                             </div>
-
-                            {/* Информация о юзере */}
                             {isOpen && (
                                 <>
                                     <div className="flex flex-col items-start text-left overflow-hidden min-w-0 flex-1 animate-in fade-in duration-200">
@@ -214,8 +225,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             )}
                         </Button>
                     </DropdownMenuTrigger>
-
-                    {/* Меню профиля */}
                     <DropdownMenuContent align="start" className="w-56 ml-2" side={isOpen ? "right" : "right"} sideOffset={5}>
                         <DropdownMenuItem className="cursor-pointer">
                             <User className="mr-2 h-4 w-4" />

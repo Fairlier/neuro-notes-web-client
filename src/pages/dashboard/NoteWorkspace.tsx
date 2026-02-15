@@ -13,14 +13,15 @@ import {
     PanelRightClose,
     PanelRightOpen,
     File,
-    Info,
     Plus,
     X,
     MoreVertical,
     Trash2,
     Pencil,
     Mic,
-    BookOpen
+    BookOpen,
+    FileAudio,
+    MessageSquareText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ const StatusBadge = ({ status }: { status: NoteStatus }) => {
     );
 };
 
-// 1. ИСПРАВЛЕНИЕ: Вынесли ButtonBase наружу и типизировали его
+// Вынесенный компонент кнопки
 interface ButtonBaseProps {
     icon: React.ElementType;
     text: string;
@@ -101,7 +102,6 @@ const ActionButton = ({
                           onSummarize,
                           isPending
                       }: ActionButtonProps) => {
-    // 2. ИСПРАВЛЕНИЕ: Используем вынесенный компонент
     if (viewMode === 'raw' && sourceType === 'AudioFile') {
         return <ButtonBase icon={Mic} text="Transcribe" onClick={onTranscribe} colorClass="text-blue-500" isPending={isPending} />;
     }
@@ -122,8 +122,9 @@ export default function NoteWorkspace() {
     const { tabs, activeTabUid, setActiveTabUid, createNewTab, closeTab, ensureActiveTab } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
-    const [isRightSidebarOpen, setRightSidebarOpen] = useState(false);
+    const [isRightSidebarOpen, setRightSidebarOpen] = useState(true); // Открыт по умолчанию для теста
 
+    // Состояния
     const [isEditing, setIsEditing] = useState(false);
     const [localContent, setLocalContent] = useState("");
     const [titleInput, setTitleInput] = useState("");
@@ -156,8 +157,6 @@ export default function NoteWorkspace() {
             const contentField = data.field === 'raw' ? 'rawText' :
                 data.field === 'structured' ? 'structuredText' :
                     'summaryText';
-
-            // 3. ИСПРАВЛЕНИЕ: Убрали (notesApi as any), так как метод теперь есть в типах
             return notesApi.update(data.id, {
                 title: data.title,
                 [contentField]: data.content
@@ -249,7 +248,6 @@ export default function NoteWorkspace() {
 
         return (
             <div className="max-w-4xl mx-auto p-8 lg:p-12 h-full flex flex-col">
-
                 {isEditing ? (
                     <input
                         value={titleInput}
@@ -359,8 +357,8 @@ export default function NoteWorkspace() {
 
                                 <span className="text-[10px] text-zinc-400 select-none">
                                     {note.updatedAt
-                                        ? format(new Date(note.updatedAt), "d MMM, HH:mm", { locale: ru })
-                                        : format(new Date(note.createdAt), "d MMM, HH:mm", { locale: ru })
+                                        ? format(new Date(note.updatedAt), "d MMM yyyy, HH:mm", { locale: ru })
+                                        : format(new Date(note.createdAt), "d MMM yyyy, HH:mm", { locale: ru })
                                     }
                                 </span>
                             </div>
@@ -368,7 +366,6 @@ export default function NoteWorkspace() {
                             {/* ПРАВАЯ ЧАСТЬ */}
                             <div className="flex items-center gap-2">
 
-                                {/* КНОПКА ДЕЙСТВИЯ (Transcribe / Structure / Summarize) */}
                                 <ActionButton
                                     viewMode={viewMode}
                                     sourceType={note.sourceType}
@@ -407,12 +404,12 @@ export default function NoteWorkspace() {
                                     {isEditing ? (
                                         <>
                                             <BookOpen className="h-3.5 w-3.5" />
-                                            <span className="hidden sm:inline">Preview</span>
+                                            <span className="hidden sm:inline"></span>
                                         </>
                                     ) : (
                                         <>
                                             <Pencil className="h-3.5 w-3.5" />
-                                            <span className="hidden sm:inline">Edit</span>
+                                            <span className="hidden sm:inline"></span>
                                         </>
                                     )}
                                 </Button>
@@ -441,22 +438,36 @@ export default function NoteWorkspace() {
 
                 {!isCreating && note && (
                     <aside className={cn("bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 ease-in-out overflow-hidden flex flex-col backdrop-blur-sm flex-shrink-0", isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0")}>
-                        <div className="h-9 border-b border-zinc-200/50 flex items-center px-4 flex-shrink-0">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                                <Info className="h-3 w-3" /> Info
-                            </span>
-                        </div>
-                        <ScrollArea className="flex-1 p-4">
-                            <div className="space-y-6">
-                                <div className="space-y-3">
-                                    <div className="text-xs font-medium text-zinc-900">Свойства</div>
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">Создано</span><span className="text-zinc-600">{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span></div>
-                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">Обновлено</span><span className="text-zinc-600">{note.updatedAt ? format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm") : "-"}</span></div>
-                                        <div className="flex justify-between text-xs"><span className="text-zinc-400">ID</span><span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]" title={note.id}>{note.id}</span></div>
-                                    </div>
-                                </div>
+
+                        {/* --- ИСПРАВЛЕНИЕ: Кнопки перенесены в шапку сайдбара --- */}
+                        {/* Установили h-10, чтобы совпадало с Main Toolbar */}
+                        <div className="h-10 border-b border-zinc-200/50 flex items-center justify-between px-3 flex-shrink-0">
+
+                            {/* Левая часть шапки: Кнопки Аудио и Чат */}
+                            <div className="flex items-center gap-1">
+                                {note.sourceType === 'AudioFile' && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-zinc-500 hover:text-blue-600 hover:bg-blue-50"
+                                        title="Прослушать аудио"
+                                    >
+                                        <FileAudio className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-zinc-500 hover:text-purple-600 hover:bg-purple-50"
+                                    title="Чат с заметкой"
+                                >
+                                    <MessageSquareText className="h-4 w-4" />
+                                </Button>
                             </div>
+                        </div>
+
+                        <ScrollArea className="flex-1 p-4">
+
                         </ScrollArea>
                     </aside>
                 )}

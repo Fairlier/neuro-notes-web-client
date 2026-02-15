@@ -9,6 +9,7 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import NoteWorkspace from "@/pages/dashboard/NoteWorkspace";
 import HomePage from "@/pages/dashboard/HomePage.tsx";
+import GlobalChatPage from "@/pages/chat/GlobalChatPage.tsx";
 
 function App() {
     return (
@@ -35,6 +36,7 @@ function App() {
                             {/* Страница поиска */}
                             <Route path="/search" element={<div className="p-8 text-zinc-500">Страница поиска (в разработке)</div>} />
 
+                            <Route path="chat" element={<GlobalChatPage />} />
                         </Route>
                     </Route>
 

@@ -3,7 +3,6 @@ import { Outlet } from "react-router-dom";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 
 export const MainLayout = () => {
-    // Состояние свернутости панели
     const [isSidebarOpen, setSidebarOpen] = useState(true);
 
     return (
@@ -16,9 +15,8 @@ export const MainLayout = () => {
             />
 
             {/* ОСНОВНОЙ КОНТЕНТ */}
-            {/* Добавили transition-all, чтобы контент плавно сдвигался при сворачивании меню */}
+            {/* Здесь будет рендериться GlobalChatPage, NoteWorkspace и т.д. */}
             <main className="flex-1 flex flex-col relative min-w-0 bg-white transition-all duration-300 ease-in-out">
-                {/* Кнопка открытия меню больше не нужна здесь, она внутри AppSidebar */}
                 <Outlet />
             </main>
         </div>
