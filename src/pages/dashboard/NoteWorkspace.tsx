@@ -58,30 +58,58 @@ const StatusBadge = ({ status }: { status: NoteStatus }) => {
     );
 };
 
-const ActionButton = ({ viewMode, sourceType }: { viewMode: ViewMode, sourceType?: string }) => {
+// 1. ИСПРАВЛЕНИЕ: Вынесли ButtonBase наружу и типизировали его
+interface ButtonBaseProps {
+    icon: React.ElementType;
+    text: string;
+    onClick: () => void;
+    colorClass: string;
+    isPending: boolean;
+}
+
+const ButtonBase = ({ icon: Icon, text, onClick, colorClass, isPending }: ButtonBaseProps) => (
+    <Button
+        variant="outline"
+        size="sm"
+        onClick={onClick}
+        disabled={isPending}
+        className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm"
+    >
+        {isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" />
+        ) : (
+            <Icon className={cn("h-3.5 w-3.5", colorClass)} />
+        )}
+        {text}
+    </Button>
+);
+
+interface ActionButtonProps {
+    viewMode: ViewMode;
+    sourceType?: string;
+    onTranscribe: () => void;
+    onStructure: () => void;
+    onSummarize: () => void;
+    isPending: boolean;
+}
+
+const ActionButton = ({
+                          viewMode,
+                          sourceType,
+                          onTranscribe,
+                          onStructure,
+                          onSummarize,
+                          isPending
+                      }: ActionButtonProps) => {
+    // 2. ИСПРАВЛЕНИЕ: Используем вынесенный компонент
     if (viewMode === 'raw' && sourceType === 'AudioFile') {
-        return (
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm">
-                <Mic className="h-3.5 w-3.5 text-blue-500" />
-                Transcribe
-            </Button>
-        );
+        return <ButtonBase icon={Mic} text="Transcribe" onClick={onTranscribe} colorClass="text-blue-500" isPending={isPending} />;
     }
     if (viewMode === 'structured') {
-        return (
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm">
-                <FileJson className="h-3.5 w-3.5 text-purple-500" />
-                Structure
-            </Button>
-        );
+        return <ButtonBase icon={FileJson} text="Structure" onClick={onStructure} colorClass="text-purple-500" isPending={isPending} />;
     }
     if (viewMode === 'summary') {
-        return (
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm">
-                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-                Summarize
-            </Button>
-        );
+        return <ButtonBase icon={Sparkles} text="Summarize" onClick={onSummarize} colorClass="text-indigo-500" isPending={isPending} />;
     }
     return null;
 };
@@ -96,7 +124,6 @@ export default function NoteWorkspace() {
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
     const [isRightSidebarOpen, setRightSidebarOpen] = useState(false);
 
-    // Состояния
     const [isEditing, setIsEditing] = useState(false);
     const [localContent, setLocalContent] = useState("");
     const [titleInput, setTitleInput] = useState("");
@@ -109,14 +136,28 @@ export default function NoteWorkspace() {
         enabled: !!id && !isCreating,
     });
 
-    // Единая мутация для сохранения изменений (Заголовок + Текст)
+    const transcribeMutation = useMutation({
+        mutationFn: notesApi.transcribe,
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
+    });
+
+    const structureMutation = useMutation({
+        mutationFn: notesApi.structure,
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
+    });
+
+    const summarizeMutation = useMutation({
+        mutationFn: notesApi.summarize,
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
+    });
+
     const saveChangesMutation = useMutation({
         mutationFn: (data: { id: string, title: string, content: string, field: ViewMode }) => {
             const contentField = data.field === 'raw' ? 'rawText' :
                 data.field === 'structured' ? 'structuredText' :
                     'summaryText';
 
-            // Теперь TypeScript знает метод update
+            // 3. ИСПРАВЛЕНИЕ: Убрали (notesApi as any), так как метод теперь есть в типах
             return notesApi.update(data.id, {
                 title: data.title,
                 [contentField]: data.content
@@ -187,7 +228,6 @@ export default function NoteWorkspace() {
 
     const toggleEditMode = () => {
         if (isEditing) {
-            // Выход из режима редактирования -> Сохраняем и заголовок, и текст
             if (note && id) {
                 saveChangesMutation.mutate({
                     id,
@@ -198,7 +238,6 @@ export default function NoteWorkspace() {
             }
             setIsEditing(false);
         } else {
-            // Вход в режим редактирования
             setIsEditing(true);
         }
     };
@@ -211,9 +250,7 @@ export default function NoteWorkspace() {
         return (
             <div className="max-w-4xl mx-auto p-8 lg:p-12 h-full flex flex-col">
 
-                {/* ЗАГОЛОВОК */}
                 {isEditing ? (
-                    // Режим редактирования: Инпут
                     <input
                         value={titleInput}
                         onChange={(e) => setTitleInput(e.target.value)}
@@ -221,7 +258,6 @@ export default function NoteWorkspace() {
                         placeholder="Без названия"
                     />
                 ) : (
-                    // Режим просмотра: Текст (не редактируется)
                     <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none cursor-default">
                         {titleInput || "Без названия"}
                     </h1>
@@ -332,7 +368,15 @@ export default function NoteWorkspace() {
                             {/* ПРАВАЯ ЧАСТЬ */}
                             <div className="flex items-center gap-2">
 
-                                <ActionButton viewMode={viewMode} sourceType={note.sourceType} />
+                                {/* КНОПКА ДЕЙСТВИЯ (Transcribe / Structure / Summarize) */}
+                                <ActionButton
+                                    viewMode={viewMode}
+                                    sourceType={note.sourceType}
+                                    onTranscribe={() => transcribeMutation.mutate(note.id)}
+                                    onStructure={() => structureMutation.mutate(note.id)}
+                                    onSummarize={() => summarizeMutation.mutate(note.id)}
+                                    isPending={transcribeMutation.isPending || structureMutation.isPending || summarizeMutation.isPending}
+                                />
 
                                 <div className="flex items-center bg-zinc-100/80 rounded-md p-0.5 border border-zinc-200/50">
                                     <button onClick={() => setViewMode('raw')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'raw' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900")}>

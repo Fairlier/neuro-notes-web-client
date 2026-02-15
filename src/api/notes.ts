@@ -30,12 +30,23 @@ export const notesApi = {
     },
 
     update: async (id: string, payload: UpdateNoteRequest) => {
-        // Используем patch для частичного обновления
         const { data } = await api.patch<void>(`/notes/${id}`, payload);
         return data;
     },
 
     delete: async (id: string) => {
         await api.delete(`/notes/${id}`);
+    },
+
+    transcribe: async (id: string) => {
+        await api.post(`/notes/${id}/transcribe`);
+    },
+
+    structure: async (id: string) => {
+        await api.post(`/notes/${id}/structure`);
+    },
+
+    summarize: async (id: string) => {
+        await api.post(`/notes/${id}/summarize`);
     }
 };
