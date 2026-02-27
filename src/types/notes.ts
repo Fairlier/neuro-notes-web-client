@@ -1,48 +1,72 @@
-export const NoteStatus = {
-    PendingResource: 'PendingResource',
-    Processing: 'Processing',
-    Failed: 'Failed',
-    Raw: 'Raw',
-    Structured: 'Structured',
-    Completed: 'Completed'
-} as const;
+// ── Enums (строки, как возвращает бэкенд через .ToString()) ──
 
-export type NoteStatus = typeof NoteStatus[keyof typeof NoteStatus];
+export type NoteStatus = 'Pending' | 'Raw' | 'Structured' | 'Summarized' | 'Failed';
+export type NoteSourceType = 'DirectText' | 'AudioFile';
+export type NoteCategory = 'Finance' | 'Ideas' | 'Personal' | 'Reference' | 'Study' | 'Work' | 'Other';
+export type SearchMode = 'Semantic' | 'Text';
+export type NoteSortBy = 'CreatedAt' | 'UpdatedAt' | 'Title' | 'Status' | 'SourceType' | 'Category';
+export type SortDirection = 'Ascending' | 'Descending';
 
-export const NoteSourceType = {
-    DirectText: 'DirectText',
-    TextFile: 'TextFile',
-    AudioFile: 'AudioFile'
-} as const;
-
-export type NoteSourceType = typeof NoteSourceType[keyof typeof NoteSourceType];
+// ── List ──
 
 export interface NoteListItemDto {
     id: string;
     title: string;
     status: NoteStatus;
     sourceType: NoteSourceType;
+    isProcessing: boolean;
+    category: string | null;
     createdAt: string;
-    updatedAt?: string;
+    updatedAt: string | null;
 }
+
+export interface NoteListResponse {
+    notes: NoteListItemDto[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+}
+
+// ── Query params для GET /notes ──
+
+export interface GetNotesParams {
+    status?: NoteStatus;
+    sourceType?: NoteSourceType;
+    category?: string;
+    createdFrom?: string;   // ISO date
+    createdTo?: string;
+    updatedFrom?: string;
+    updatedTo?: string;
+    searchTerm?: string;
+    searchMode?: SearchMode;
+    sortBy?: NoteSortBy;
+    sortDirection?: SortDirection;
+    page?: number;
+    pageSize?: number;
+}
+
+// ── Details ──
 
 export interface NoteDetailsDto {
     id: string;
     title: string;
     sourceType: NoteSourceType;
+    category: string | null;
+    rawText: string | null;
+    structuredText: string | null;
+    summaryText: string | null;
     status: NoteStatus;
-
-    rawText?: string;
-    structuredText?: string;
-    summaryText?: string;
-
+    isProcessing: boolean;
+    errorMessage: string | null;
     createdAt: string;
-    updatedAt?: string;
+    updatedAt: string | null;
+    hasSourceFile: boolean;
 }
 
-export interface NoteListResponse {
-    notes: NoteListItemDto[];
-}
+// ── Create ──
 
 export interface CreateDirectTextRequest {
     title: string;
@@ -51,4 +75,14 @@ export interface CreateDirectTextRequest {
 
 export interface CreateNoteResponse {
     id: string;
+}
+
+// ── Update ──
+
+export interface UpdateNoteRequest {
+    title?: string;
+    rawText?: string;
+    structuredText?: string;
+    summaryText?: string;
+    category?: string;
 }

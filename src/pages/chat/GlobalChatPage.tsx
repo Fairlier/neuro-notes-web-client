@@ -13,16 +13,16 @@ export default function GlobalChatPage() {
     const scrollRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
 
-    // 1. Загрузка истории
+    // 1. Загрузка истории - ИСПРАВЛЕНО
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['global-chat'],
-        queryFn: () => chatApi.getHistory(null),
-        retry: false, // Не повторять бесконечно при ошибке
+        queryFn: () => chatApi.getGlobalHistory(), // ✅ Правильный метод
+        retry: false,
     });
 
-    // 2. Отправка сообщения
+    // 2. Отправка сообщения - ИСПРАВЛЕНО
     const sendMutation = useMutation({
-        mutationFn: (message: string) => chatApi.sendMessage({ message, noteId: null }),
+        mutationFn: (message: string) => chatApi.sendGlobalMessage(message), // ✅ Правильный метод
         onSuccess: () => {
             setInput("");
             queryClient.invalidateQueries({ queryKey: ['global-chat'] });
@@ -33,9 +33,9 @@ export default function GlobalChatPage() {
         }
     });
 
-    // 3. Очистка истории
+    // 3. Очистка истории - ИСПРАВЛЕНО
     const clearMutation = useMutation({
-        mutationFn: () => chatApi.clearHistory(null),
+        mutationFn: () => chatApi.clearGlobalHistory(), // ✅ Правильный метод
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['global-chat'] })
     });
 
@@ -67,10 +67,10 @@ export default function GlobalChatPage() {
                 </div>
                 <h2 className="text-lg font-semibold text-zinc-900">Ошибка загрузки чата</h2>
                 <p className="text-sm text-zinc-500 max-w-md">
-                    Не удалось подключиться к серверу чата. Проверьте, запущен ли бэкенд, и создан ли файл api/chat.ts.
+                    Не удалось подключиться к серверу чата. Проверьте, запущен ли бэкенд.
                 </p>
                 <div className="p-4 bg-zinc-100 rounded text-xs font-mono text-left max-w-lg overflow-auto">
-                    {JSON.stringify(error, null, 2)}
+                    {error instanceof Error ? error.message : JSON.stringify(error, null, 2)}
                 </div>
                 <Button onClick={() => window.location.reload()}>Обновить страницу</Button>
             </div>
@@ -149,7 +149,6 @@ export default function GlobalChatPage() {
                                         {isUser ? (
                                             msg.content
                                         ) : (
-                                            /* Markdown рендеринг */
                                             <div className="prose prose-sm max-w-none prose-zinc">
                                                 <Markdown>{msg.content || ""}</Markdown>
                                             </div>

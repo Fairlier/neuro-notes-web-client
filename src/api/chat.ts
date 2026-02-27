@@ -1,5 +1,7 @@
 import api from './axios';
 
+// ── Types ──
+
 export interface ChatMessageDto {
     id: string;
     role: 'User' | 'Assistant';
@@ -9,32 +11,56 @@ export interface ChatMessageDto {
 
 export interface ChatHistoryResponse {
     sessionId: string;
-    relatedNoteId?: string;
+    relatedNoteId: string | null;
     title: string;
     messages: ChatMessageDto[];
 }
 
-export interface SendMessageRequest {
-    noteId?: string | null;
-    message: string;
+export interface SendChatMessageResponse {
+    response: string;
+    sessionId: string;
 }
 
+// ── API ──
+
 export const chatApi = {
-    getHistory: async (noteId?: string | null) => {
-        const params = noteId ? { noteId } : {};
-        const { data } = await api.get<ChatHistoryResponse>('/chat/history', { params });
+    // ═══ Global Chat ═══
+
+    getGlobalHistory: async () => {
+        const { data } = await api.get<ChatHistoryResponse>('/chat/global/history');
         return data;
     },
 
-    // Отправить сообщение
-    sendMessage: async (payload: SendMessageRequest) => {
-        const { data } = await api.post('/chat/send', payload);
+    sendGlobalMessage: async (message: string) => {
+        const { data } = await api.post<SendChatMessageResponse>(
+            '/chat/global/send',
+            { message }
+        );
         return data;
     },
 
-    // Очистить историю
-    clearHistory: async (noteId?: string | null) => {
-        const params = noteId ? { noteId } : {};
-        await api.delete('/chat/history', { params });
-    }
+    clearGlobalHistory: async () => {
+        await api.delete('/chat/global/history');
+    },
+
+    // ═══ Note Chat ═══
+
+    getNoteHistory: async (noteId: string) => {
+        const { data } = await api.get<ChatHistoryResponse>(
+            `/chat/notes/${noteId}/history`
+        );
+        return data;
+    },
+
+    sendNoteMessage: async (noteId: string, message: string) => {
+        const { data } = await api.post<SendChatMessageResponse>(
+            `/chat/notes/${noteId}/send`,
+            { message }       // SendNoteChatMessageDto { Message }
+        );
+        return data;
+    },
+
+    clearNoteHistory: async (noteId: string) => {
+        await api.delete(`/chat/notes/${noteId}/history`);
+    },
 };

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notesApi } from "@/api/notes";
 import { chatApi } from "@/api/chat";
-import { NoteStatus } from "@/types/notes";
+import type { NoteStatus } from "@/types/notes";
 import { useTabs } from "@/features/tabs/TabsContext";
 import { NoteCreator } from "@/features/notes/NoteCreator";
 import {
@@ -50,12 +50,11 @@ type SidebarView = 'info' | 'chat';
 
 const StatusBadge = ({ status }: { status: NoteStatus }) => {
     const styles = {
-        'PendingResource': 'text-zinc-500 bg-zinc-100',
-        'Processing': 'text-blue-600 bg-blue-50',
+        'Pending': 'text-zinc-500 bg-zinc-100',
         'Failed': 'text-red-600 bg-red-50',
         'Raw': 'text-orange-600 bg-orange-50',
         'Structured': 'text-purple-600 bg-purple-50',
-        'Completed': 'text-green-600 bg-green-50',
+        'Summarized': 'text-green-600 bg-green-50',
     }[status] || 'text-zinc-500 bg-zinc-100';
 
     return (
@@ -127,11 +126,11 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
 
     const { data, isLoading } = useQuery({
         queryKey: ['chat', noteId],
-        queryFn: () => chatApi.getHistory(noteId),
+        queryFn: () => chatApi.getNoteHistory(noteId),
     });
 
     const sendMutation = useMutation({
-        mutationFn: (message: string) => chatApi.sendMessage({ message, noteId }),
+        mutationFn: (message: string) => chatApi.sendNoteMessage(noteId, message),
         onSuccess: async () => {
             setInput("");
             await queryClient.invalidateQueries({ queryKey: ['chat', noteId] });
@@ -139,7 +138,7 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
     });
 
     const clearMutation = useMutation({
-        mutationFn: () => chatApi.clearHistory(noteId),
+        mutationFn: () => chatApi.clearNoteHistory(noteId),
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['chat', noteId] });
         }
@@ -149,7 +148,7 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: "smooth" });
         }
-    }, [data?.messages, isLoading]);
+    }, [data?.messages, sendMutation.isPending]); // ✅ Добавлен sendMutation.isPending
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -164,12 +163,15 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-zinc-50/30">
+        // ✅ ИСПРАВЛЕНО: flex-1 + min-h-0 + overflow-hidden
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-zinc-50/30">
             {/* Список сообщений */}
-            <ScrollArea className="flex-1 px-3 py-4">
+            <ScrollArea className="flex-1 min-h-0 px-3 py-4">
                 <div className="flex flex-col gap-3">
                     {isLoading ? (
-                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-zinc-300" /></div>
+                        <div className="flex justify-center py-4">
+                            <Loader2 className="h-5 w-5 animate-spin text-zinc-300" />
+                        </div>
                     ) : !data?.messages || data.messages.length === 0 ? (
                         <div className="text-center text-zinc-400 text-xs py-8 px-4 leading-relaxed">
                             Нет сообщений. Спросите что-нибудь по этой заметке.
@@ -192,7 +194,6 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
                                         {isUser ? (
                                             msg.content
                                         ) : (
-                                            /* --- ИСПРАВЛЕНИЕ: Обертка div вместо className на Markdown --- */
                                             <div className="prose prose-xs max-w-none prose-zinc">
                                                 <Markdown>{msg.content || ""}</Markdown>
                                             </div>
@@ -216,8 +217,8 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
                 </div>
             </ScrollArea>
 
-            {/* Ввод */}
-            <div className="p-3 border-t border-zinc-200 bg-white">
+            {/* Ввод - ✅ flex-shrink-0 чтобы не сжимался */}
+            <div className="p-3 border-t border-zinc-200 bg-white flex-shrink-0">
                 <div className="relative">
                     <Textarea
                         value={input}

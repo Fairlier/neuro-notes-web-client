@@ -8,12 +8,32 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 
 const api = axios.create({
     baseURL: API_URL,
-    withCredentials: true,
+    withCredentials: true,           // refresh-токен летит в HttpOnly cookie
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
+// ── mutex для refresh ──────────────────────────────────────────────
+let isRefreshing = false;
+let failedQueue: Array<{
+    resolve: (token: string) => void;
+    reject: (error: unknown) => void;
+}> = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+    failedQueue.forEach(({ resolve, reject }) => {
+        if (error) {
+            reject(error);
+        } else {
+            resolve(token!);
+        }
+    });
+    failedQueue = [];
+};
+// ────────────────────────────────────────────────────────────────────
+
+// ── request: подставляем accessToken ────────────────────────────────
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -22,6 +42,7 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+// ── response: обработка 401 + очередь ───────────────────────────────
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
@@ -31,26 +52,46 @@ api.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        if (
-            error.response?.status === 401 &&
-            !originalRequest._retry &&
-            !originalRequest.url?.includes('/auth/refresh')
-        ) {
+        const isUnauthorized = error.response?.status === 401;
+        const isRetry = originalRequest._retry;
+        const isRefreshUrl = originalRequest.url?.includes('/auth/refresh');
+
+        if (isUnauthorized && !isRetry && !isRefreshUrl) {
+            // ─── другой запрос уже обновляет токен — встаём в очередь ───
+            if (isRefreshing) {
+                return new Promise<string>((resolve, reject) => {
+                    failedQueue.push({ resolve, reject });
+                }).then((newToken) => {
+                    originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                    return api(originalRequest);
+                });
+            }
+
+            // ─── мы первые — запускаем refresh ─────────────────────────
             originalRequest._retry = true;
+            isRefreshing = true;
 
             try {
+                // cookie с refreshToken уйдёт автоматически (withCredentials)
                 const { data } = await api.post('/auth/refresh');
+                const newAccessToken: string = data.accessToken;
 
-                localStorage.setItem('accessToken', data.accessToken);
+                localStorage.setItem('accessToken', newAccessToken);
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
-                originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+                // разрешаем все ожидающие запросы с новым токеном
+                processQueue(null, newAccessToken);
 
                 return api(originalRequest);
             } catch (refreshError) {
-                console.error("Session expired", refreshError);
+                // отклоняем все ожидающие запросы
+                processQueue(refreshError, null);
+
                 localStorage.removeItem('accessToken');
                 window.location.href = '/login';
                 return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
             }
         }
 
