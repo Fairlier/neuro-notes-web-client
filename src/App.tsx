@@ -1,8 +1,8 @@
+// src/App.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/features/auth/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { MainLayout } from "@/components/layout/MainLayout";
-// Импортируем провайдер вкладок
 import { TabsProvider } from "@/features/tabs/TabsContext";
 
 import LoginPage from "@/pages/auth/LoginPage";
@@ -10,11 +10,11 @@ import RegisterPage from "@/pages/auth/RegisterPage";
 import NoteWorkspace from "@/pages/dashboard/NoteWorkspace";
 import HomePage from "@/pages/dashboard/HomePage.tsx";
 import GlobalChatPage from "@/pages/chat/GlobalChatPage.tsx";
+import SearchPage from "@/pages/search/SearchPage.tsx"; // 👈 Добавляем импорт
 
 function App() {
     return (
         <AuthProvider>
-            {/* Оборачиваем роуты в TabsProvider, чтобы контекст был доступен внутри NoteWorkspace и Sidebar */}
             <TabsProvider>
                 <Routes>
                     {/* --- Публичные маршруты --- */}
@@ -24,17 +24,12 @@ function App() {
                     {/* --- Приватные маршруты --- */}
                     <Route element={<ProtectedRoute />}>
                         <Route element={<MainLayout />}>
-
                             <Route path="/" element={<HomePage />} />
-
-                            {/* Маршрут для создания новой заметки (открывает NoteWorkspace в режиме создания) */}
                             <Route path="/notes/new" element={<NoteWorkspace />} />
-
-                            {/* Просмотр конкретной заметки по ID */}
                             <Route path="/notes/:id" element={<NoteWorkspace />} />
 
-                            {/* Страница поиска */}
-                            <Route path="/search" element={<div className="p-8 text-zinc-500">Страница поиска (в разработке)</div>} />
+                            {/* 👇 ОБНОВЛЁННЫЙ МАРШРУТ ПОИСКА */}
+                            <Route path="/search" element={<SearchPage />} />
 
                             <Route path="chat" element={<GlobalChatPage />} />
                         </Route>
