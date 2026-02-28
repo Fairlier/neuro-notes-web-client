@@ -1,8 +1,8 @@
 // src/features/notes/NoteCreator.tsx
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notesApi } from "@/api/notes";
+import { useTabs } from "@/features/tabs/TabsContext";
 import type { GetNotesParams, NoteStatus, NoteSourceType, NoteCategory, SearchMode, NoteSortBy, SortDirection, NoteListItemDto } from "@/types/notes";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -36,11 +36,12 @@ import {
     Sparkles,
     Type,
     AlertCircle,
-    FileQuestion
+    FileQuestion,
+    ArrowUpDown,
+    CalendarDays
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { useTabs } from "@/features/tabs/TabsContext";
 
 // --- Компонент карточки заметки ---
 interface NoteCardProps {
@@ -103,50 +104,80 @@ const NoteCard = ({ note, onClick }: NoteCardProps) => {
     );
 };
 
+// --- Значения по умолчанию ---
+const DEFAULT_FILTERS = {
+    searchTerm: "",
+    searchMode: 'Title' as SearchMode,
+    status: 'all' as NoteStatus | 'all',
+    sourceType: 'all' as NoteSourceType | 'all',
+    category: 'all' as NoteCategory | 'all',
+    sortBy: 'CreatedAt' as NoteSortBy,
+    sortDirection: 'Descending' as SortDirection,
+    createdFrom: "",
+    createdTo: "",
+    updatedFrom: "",
+    updatedTo: "",
+};
+
 // --- Главный компонент ---
 export function NoteCreator() {
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const { ensureActiveTab } = useTabs();
+
+    // Получаем функцию для открытия заметки в текущей вкладке
+    const { openNoteInCurrentTab } = useTabs();
 
     // === Состояние создания заметки ===
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
 
-    // === Состояние поиска (БЕЗ useSearchParams) ===
-    const [searchTerm, setSearchTerm] = useState("");
+    // === Состояние поиска ===
+    const [searchTerm, setSearchTerm] = useState(DEFAULT_FILTERS.searchTerm);
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isFiltersOpen, setFiltersOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Фильтры
-    const [searchMode, setSearchMode] = useState<SearchMode>('Title');
-    const [status, setStatus] = useState<NoteStatus | 'all'>('all');
-    const [sourceType, setSourceType] = useState<NoteSourceType | 'all'>('all');
-    const [category, setCategory] = useState<NoteCategory | 'all'>('all');
-    const [sortBy, setSortBy] = useState<NoteSortBy>('CreatedAt');
-    const [sortDirection, setSortDirection] = useState<SortDirection>('Descending');
+    // === Фильтры ===
+    const [searchMode, setSearchMode] = useState<SearchMode>(DEFAULT_FILTERS.searchMode);
+    const [status, setStatus] = useState<NoteStatus | 'all'>(DEFAULT_FILTERS.status);
+    const [sourceType, setSourceType] = useState<NoteSourceType | 'all'>(DEFAULT_FILTERS.sourceType);
+    const [category, setCategory] = useState<NoteCategory | 'all'>(DEFAULT_FILTERS.category);
 
-    // Синхронизация вкладки при монтировании
-    useEffect(() => {
-        ensureActiveTab('new', 'Новая заметка', '/notes/new');
-    }, [ensureActiveTab]);
+    // === Сортировка ===
+    const [sortBy, setSortBy] = useState<NoteSortBy>(DEFAULT_FILTERS.sortBy);
+    const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_FILTERS.sortDirection);
+
+    // === Фильтры по датам ===
+    const [createdFrom, setCreatedFrom] = useState(DEFAULT_FILTERS.createdFrom);
+    const [createdTo, setCreatedTo] = useState(DEFAULT_FILTERS.createdTo);
+    const [updatedFrom, setUpdatedFrom] = useState(DEFAULT_FILTERS.updatedFrom);
+    const [updatedTo, setUpdatedTo] = useState(DEFAULT_FILTERS.updatedTo);
 
     // === Мутация создания заметки ===
     const createMutation = useMutation({
         mutationFn: notesApi.createDirectText,
-        onSuccess: async (data) => {
-            await queryClient.invalidateQueries({ queryKey: ['notes'] });
-            navigate(`/notes/${data.id}`);
-        },
     });
 
     const handleCreate = () => {
         if (!content.trim()) return;
+
         const finalTitle = title.trim()
             ? title.trim()
             : content.split('\n')[0].substring(0, 50) || "Новая заметка";
-        createMutation.mutate({ title: finalTitle, content });
+
+        createMutation.mutate(
+            { title: finalTitle, content },
+            {
+                onSuccess: async (data) => {
+                    await queryClient.invalidateQueries({ queryKey: ['notes'] });
+                    // После создания заметки открываем её в текущей вкладке
+                    // Используем finalTitle из замыкания, т.к. API возвращает только id
+                    openNoteInCurrentTab(data.id, finalTitle);
+                    // Очищаем форму
+                    setTitle("");
+                    setContent("");
+                }
+            }
+        );
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -164,6 +195,27 @@ export function NoteCreator() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
+    // === Проверка активных фильтров ===
+    const hasActiveFilters =
+        status !== DEFAULT_FILTERS.status ||
+        sourceType !== DEFAULT_FILTERS.sourceType ||
+        category !== DEFAULT_FILTERS.category ||
+        createdFrom !== DEFAULT_FILTERS.createdFrom ||
+        createdTo !== DEFAULT_FILTERS.createdTo ||
+        updatedFrom !== DEFAULT_FILTERS.updatedFrom ||
+        updatedTo !== DEFAULT_FILTERS.updatedTo ||
+        sortBy !== DEFAULT_FILTERS.sortBy ||
+        sortDirection !== DEFAULT_FILTERS.sortDirection;
+
+    // === Подсчёт активных фильтров ===
+    const activeFiltersCount = [
+        status !== DEFAULT_FILTERS.status,
+        sourceType !== DEFAULT_FILTERS.sourceType,
+        category !== DEFAULT_FILTERS.category,
+        createdFrom || createdTo,
+        updatedFrom || updatedTo,
+    ].filter(Boolean).length;
+
     // Параметры запроса
     const queryParams: GetNotesParams = {
         searchTerm: debouncedSearch || undefined,
@@ -171,6 +223,10 @@ export function NoteCreator() {
         status: status !== 'all' ? status : undefined,
         sourceType: sourceType !== 'all' ? sourceType : undefined,
         category: category !== 'all' ? category : undefined,
+        createdFrom: createdFrom ? new Date(createdFrom).toISOString() : undefined,
+        createdTo: createdTo ? new Date(createdTo).toISOString() : undefined,
+        updatedFrom: updatedFrom ? new Date(updatedFrom).toISOString() : undefined,
+        updatedTo: updatedTo ? new Date(updatedTo).toISOString() : undefined,
         sortBy,
         sortDirection,
         page: currentPage,
@@ -183,39 +239,19 @@ export function NoteCreator() {
         queryFn: () => notesApi.getAll(queryParams),
     });
 
-    // Обработчик клика по карточке
-    const handleNoteClick = (noteId: string) => {
-        navigate(`/notes/${noteId}`);
+    // Обработчик клика по карточке — открывает заметку в текущей вкладке
+    const handleNoteClick = (noteId: string, noteTitle: string) => {
+        openNoteInCurrentTab(noteId, noteTitle || "Без названия");
     };
 
-    // Обработчики фильтров
+    // === Обработчики изменений ===
     const handleSearchModeChange = () => {
-        setSearchMode(searchMode === 'Semantic' ? 'Title' : 'Semantic');
+        setSearchMode(prev => prev === 'Semantic' ? 'Title' : 'Semantic');
         setCurrentPage(1);
     };
 
-    const handleStatusChange = (v: NoteStatus | 'all') => {
-        setStatus(v);
-        setCurrentPage(1);
-    };
-
-    const handleSourceTypeChange = (v: NoteSourceType | 'all') => {
-        setSourceType(v);
-        setCurrentPage(1);
-    };
-
-    const handleCategoryChange = (v: NoteCategory | 'all') => {
-        setCategory(v);
-        setCurrentPage(1);
-    };
-
-    const handleSortByChange = (v: NoteSortBy) => {
-        setSortBy(v);
-        setCurrentPage(1);
-    };
-
-    const handleSortDirectionChange = (v: SortDirection) => {
-        setSortDirection(v);
+    const handleFilterChange = <T,>(setter: React.Dispatch<React.SetStateAction<T>>) => (value: T) => {
+        setter(value);
         setCurrentPage(1);
     };
 
@@ -224,18 +260,21 @@ export function NoteCreator() {
         setCurrentPage(1);
     };
 
+    // === Полный сброс фильтров ===
     const resetFilters = () => {
-        setSearchTerm("");
-        setSearchMode('Title');
-        setStatus('all');
-        setSourceType('all');
-        setCategory('all');
-        setSortBy('CreatedAt');
-        setSortDirection('Descending');
+        setSearchTerm(DEFAULT_FILTERS.searchTerm);
+        setSearchMode(DEFAULT_FILTERS.searchMode);
+        setStatus(DEFAULT_FILTERS.status);
+        setSourceType(DEFAULT_FILTERS.sourceType);
+        setCategory(DEFAULT_FILTERS.category);
+        setSortBy(DEFAULT_FILTERS.sortBy);
+        setSortDirection(DEFAULT_FILTERS.sortDirection);
+        setCreatedFrom(DEFAULT_FILTERS.createdFrom);
+        setCreatedTo(DEFAULT_FILTERS.createdTo);
+        setUpdatedFrom(DEFAULT_FILTERS.updatedFrom);
+        setUpdatedTo(DEFAULT_FILTERS.updatedTo);
         setCurrentPage(1);
     };
-
-    const hasActiveFilters = status !== 'all' || sourceType !== 'all' || category !== 'all';
 
     const handlePreviousPage = () => {
         if (data?.hasPreviousPage) {
@@ -248,6 +287,9 @@ export function NoteCreator() {
             setCurrentPage(prev => prev + 1);
         }
     };
+
+    // Семантический поиск отключает сортировку
+    const isSemanticSearch = searchMode === 'Semantic' && !!debouncedSearch;
 
     // Обработка ошибки
     if (isError) {
@@ -346,8 +388,8 @@ export function NoteCreator() {
                                 onChange={(e) => handleSearchTermChange(e.target.value)}
                                 placeholder={
                                     searchMode === 'Semantic'
-                                        ? "Введите поисковый запрос (семантический поиск по смыслу)..."
-                                        : "Введите название заметки..."
+                                        ? "Семантический поиск по смыслу содержимого..."
+                                        : "Поиск по названию заметки..."
                                 }
                                 className="w-full h-12 pl-12 pr-32 text-base bg-zinc-50 border-zinc-200 rounded-xl focus-visible:ring-blue-500"
                             />
@@ -399,6 +441,11 @@ export function NoteCreator() {
                                     >
                                         <SlidersHorizontal className="h-3.5 w-3.5" />
                                         Фильтры
+                                        {activeFiltersCount > 0 && (
+                                            <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full text-[10px] font-medium">
+                                                {activeFiltersCount}
+                                            </span>
+                                        )}
                                         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isFiltersOpen && "rotate-180")} />
                                     </Button>
                                 </CollapsibleTrigger>
@@ -408,105 +455,196 @@ export function NoteCreator() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={resetFilters}
-                                        className="h-8 px-3 text-xs text-zinc-400 hover:text-zinc-600"
+                                        className="h-8 px-3 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
                                     >
                                         <X className="h-3 w-3 mr-1" />
-                                        Сбросить
+                                        Сбросить всё
                                     </Button>
                                 )}
                             </div>
 
-                            <CollapsibleContent className="mt-4">
-                                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 p-4 bg-zinc-50 rounded-xl border border-zinc-100">
-                                    {/* Статус */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Статус</label>
-                                        <Select value={status} onValueChange={handleStatusChange}>
-                                            <SelectTrigger className="h-9 text-xs bg-white">
-                                                <SelectValue placeholder="Все" />
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" sideOffset={4}>
-                                                <SelectItem value="all">Все статусы</SelectItem>
-                                                <SelectItem value="Pending">Pending</SelectItem>
-                                                <SelectItem value="Raw">Raw</SelectItem>
-                                                <SelectItem value="Structured">Structured</SelectItem>
-                                                <SelectItem value="Summarized">Summarized</SelectItem>
-                                                <SelectItem value="Failed">Failed</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                            <CollapsibleContent className="mt-4 space-y-4">
+                                {/* === БЛОК 1: Основные фильтры === */}
+                                <div className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Filter className="h-4 w-4 text-zinc-400" />
+                                        <span className="text-xs font-medium text-zinc-700">Фильтры</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {/* Статус */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Статус</label>
+                                            <Select value={status} onValueChange={handleFilterChange(setStatus)}>
+                                                <SelectTrigger className="h-9 text-xs bg-white">
+                                                    <SelectValue placeholder="Все" />
+                                                </SelectTrigger>
+                                                <SelectContent position="popper" sideOffset={4}>
+                                                    <SelectItem value="all">Все статусы</SelectItem>
+                                                    <SelectItem value="Pending">Pending</SelectItem>
+                                                    <SelectItem value="Raw">Raw</SelectItem>
+                                                    <SelectItem value="Structured">Structured</SelectItem>
+                                                    <SelectItem value="Summarized">Summarized</SelectItem>
+                                                    <SelectItem value="Failed">Failed</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Тип источника */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Тип</label>
+                                            <Select value={sourceType} onValueChange={handleFilterChange(setSourceType)}>
+                                                <SelectTrigger className="h-9 text-xs bg-white">
+                                                    <SelectValue placeholder="Все" />
+                                                </SelectTrigger>
+                                                <SelectContent position="popper" sideOffset={4}>
+                                                    <SelectItem value="all">Все типы</SelectItem>
+                                                    <SelectItem value="DirectText">Текст</SelectItem>
+                                                    <SelectItem value="AudioFile">Аудио</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Категория */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Категория</label>
+                                            <Select value={category} onValueChange={handleFilterChange(setCategory)}>
+                                                <SelectTrigger className="h-9 text-xs bg-white">
+                                                    <SelectValue placeholder="Все" />
+                                                </SelectTrigger>
+                                                <SelectContent position="popper" sideOffset={4}>
+                                                    <SelectItem value="all">Все категории</SelectItem>
+                                                    <SelectItem value="Finance">Финансы</SelectItem>
+                                                    <SelectItem value="Ideas">Идеи</SelectItem>
+                                                    <SelectItem value="Personal">Личное</SelectItem>
+                                                    <SelectItem value="Reference">Справка</SelectItem>
+                                                    <SelectItem value="Study">Учёба</SelectItem>
+                                                    <SelectItem value="Work">Работа</SelectItem>
+                                                    <SelectItem value="Other">Другое</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* === БЛОК 2: Фильтры по датам === */}
+                                <div className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <CalendarDays className="h-4 w-4 text-zinc-400" />
+                                        <span className="text-xs font-medium text-zinc-700">Период</span>
                                     </div>
 
-                                    {/* Тип */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Тип</label>
-                                        <Select value={sourceType} onValueChange={handleSourceTypeChange}>
-                                            <SelectTrigger className="h-9 text-xs bg-white">
-                                                <SelectValue placeholder="Все" />
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" sideOffset={4}>
-                                                <SelectItem value="all">Все типы</SelectItem>
-                                                <SelectItem value="DirectText">Текст</SelectItem>
-                                                <SelectItem value="AudioFile">Аудио</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        {/* Дата создания */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Дата создания</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-1">
+                                                    <span className="text-[9px] text-zinc-400">От</span>
+                                                    <Input
+                                                        type="date"
+                                                        value={createdFrom}
+                                                        onChange={(e) => handleFilterChange(setCreatedFrom)(e.target.value)}
+                                                        className="h-9 text-xs bg-white"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <span className="text-[9px] text-zinc-400">До</span>
+                                                    <Input
+                                                        type="date"
+                                                        value={createdTo}
+                                                        onChange={(e) => handleFilterChange(setCreatedTo)(e.target.value)}
+                                                        className="h-9 text-xs bg-white"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Дата обновления */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Дата обновления</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-1">
+                                                    <span className="text-[9px] text-zinc-400">От</span>
+                                                    <Input
+                                                        type="date"
+                                                        value={updatedFrom}
+                                                        onChange={(e) => handleFilterChange(setUpdatedFrom)(e.target.value)}
+                                                        className="h-9 text-xs bg-white"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <span className="text-[9px] text-zinc-400">До</span>
+                                                    <Input
+                                                        type="date"
+                                                        value={updatedTo}
+                                                        onChange={(e) => handleFilterChange(setUpdatedTo)(e.target.value)}
+                                                        className="h-9 text-xs bg-white"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* === БЛОК 3: Сортировка === */}
+                                <div className={cn(
+                                    "p-4 bg-zinc-50 rounded-xl border border-zinc-100 transition-opacity",
+                                    isSemanticSearch && "opacity-50"
+                                )}>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <ArrowUpDown className="h-4 w-4 text-zinc-400" />
+                                            <span className="text-xs font-medium text-zinc-700">Сортировка</span>
+                                        </div>
+                                        {isSemanticSearch && (
+                                            <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+                                                Сортировка по релевантности
+                                            </span>
+                                        )}
                                     </div>
 
-                                    {/* Категория */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Категория</label>
-                                        <Select value={category} onValueChange={handleCategoryChange}>
-                                            <SelectTrigger className="h-9 text-xs bg-white">
-                                                <SelectValue placeholder="Все" />
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" sideOffset={4}>
-                                                <SelectItem value="all">Все категории</SelectItem>
-                                                <SelectItem value="Finance">Финансы</SelectItem>
-                                                <SelectItem value="Ideas">Идеи</SelectItem>
-                                                <SelectItem value="Personal">Личное</SelectItem>
-                                                <SelectItem value="Reference">Справка</SelectItem>
-                                                <SelectItem value="Study">Учёба</SelectItem>
-                                                <SelectItem value="Work">Работа</SelectItem>
-                                                <SelectItem value="Other">Другое</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {/* Поле сортировки */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Сортировать по</label>
+                                            <Select
+                                                value={sortBy}
+                                                onValueChange={handleFilterChange(setSortBy)}
+                                                disabled={isSemanticSearch}
+                                            >
+                                                <SelectTrigger className="h-9 text-xs bg-white">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent position="popper" sideOffset={4}>
+                                                    <SelectItem value="CreatedAt">Дате создания</SelectItem>
+                                                    <SelectItem value="UpdatedAt">Дате обновления</SelectItem>
+                                                    <SelectItem value="Title">Названию</SelectItem>
+                                                    <SelectItem value="Status">Статусу</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
 
-                                    {/* Сортировка */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Сортировка</label>
-                                        <Select
-                                            value={sortBy}
-                                            onValueChange={handleSortByChange}
-                                            disabled={searchMode === 'Semantic' && !!debouncedSearch}
-                                        >
-                                            <SelectTrigger className="h-9 text-xs bg-white">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" sideOffset={4}>
-                                                <SelectItem value="CreatedAt">По дате создания</SelectItem>
-                                                <SelectItem value="UpdatedAt">По дате обновления</SelectItem>
-                                                <SelectItem value="Title">По названию</SelectItem>
-                                                <SelectItem value="Status">По статусу</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {/* Порядок */}
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Порядок</label>
-                                        <Select
-                                            value={sortDirection}
-                                            onValueChange={handleSortDirectionChange}
-                                            disabled={searchMode === 'Semantic' && !!debouncedSearch}
-                                        >
-                                            <SelectTrigger className="h-9 text-xs bg-white">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent position="popper" sideOffset={4}>
-                                                <SelectItem value="Descending">Сначала новые</SelectItem>
-                                                <SelectItem value="Ascending">Сначала старые</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        {/* Направление сортировки */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Направление</label>
+                                            <Select
+                                                value={sortDirection}
+                                                onValueChange={handleFilterChange(setSortDirection)}
+                                                disabled={isSemanticSearch}
+                                            >
+                                                <SelectTrigger className="h-9 text-xs bg-white">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent position="popper" sideOffset={4}>
+                                                    <SelectItem value="Descending">
+                                                        {sortBy === 'Title' ? 'Я → А' : sortBy === 'Status' ? 'Z → A' : 'Сначала новые'}
+                                                    </SelectItem>
+                                                    <SelectItem value="Ascending">
+                                                        {sortBy === 'Title' ? 'А → Я' : sortBy === 'Status' ? 'A → Z' : 'Сначала старые'}
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
                                 </div>
                             </CollapsibleContent>
@@ -560,13 +698,14 @@ export function NoteCreator() {
                             <div>
                                 <h3 className="font-medium text-zinc-900 mb-1">Заметки не найдены</h3>
                                 <p className="text-sm text-zinc-500 max-w-md">
-                                    {debouncedSearch
-                                        ? `По запросу «${debouncedSearch}» ничего не найдено.`
+                                    {debouncedSearch || hasActiveFilters
+                                        ? "Попробуйте изменить параметры поиска или сбросить фильтры."
                                         : "Создайте свою первую заметку выше."}
                                 </p>
                             </div>
                             {hasActiveFilters && (
                                 <Button variant="outline" size="sm" onClick={resetFilters}>
+                                    <X className="h-3 w-3 mr-1" />
                                     Сбросить фильтры
                                 </Button>
                             )}
@@ -577,7 +716,7 @@ export function NoteCreator() {
                                 <NoteCard
                                     key={note.id}
                                     note={note}
-                                    onClick={() => handleNoteClick(note.id)}
+                                    onClick={() => handleNoteClick(note.id, note.title)}
                                 />
                             ))}
                         </div>

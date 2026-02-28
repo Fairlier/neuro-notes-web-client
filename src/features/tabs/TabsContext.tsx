@@ -1,4 +1,4 @@
-//src/features/tabs/TabsCOntext.tsx
+// src/features/tabs/TabsContext.tsx
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode, MouseEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -14,12 +14,15 @@ interface TabsContextType {
     tabs: Tab[];
     activeTabUid: string | null;
     createNewTab: () => void;
-    ensureActiveTab: (noteId: string, title: string, url: string) => void;
+    openNoteInCurrentTab: (noteId: string, title: string) => void;  // ← ДОБАВЛЕНО
+    updateCurrentTabNote: (noteId: string, title: string) => void;
     closeTab: (e: MouseEvent | null, uid: string) => void;
     setActiveTabUid: (uid: string) => void;
 }
 
 const TabsContext = createContext<TabsContextType | undefined>(undefined);
+
+const generateUid = () => Math.random().toString(36).substr(2, 9);
 
 export const TabsProvider = ({ children }: { children: ReactNode }) => {
     const [tabs, setTabs] = useState<Tab[]>([]);
@@ -29,14 +32,12 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const generateUid = () => Math.random().toString(36).substr(2, 9);
-
     // Синхронизация Ref
     useEffect(() => {
         activeTabUidRef.current = activeTabUid;
     }, [activeTabUid]);
 
-    // Инициализация
+    // Инициализация при первом рендере
     useEffect(() => {
         if (tabs.length === 0) {
             const pathParts = location.pathname.split('/notes/');
@@ -44,9 +45,9 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
             const newUid = generateUid();
             const newTab: Tab = {
                 uid: newUid,
-                noteId: noteId,
+                noteId: noteId === 'new' ? 'new' : noteId,
                 title: noteId === 'new' ? 'Новая вкладка' : 'Загрузка...',
-                url: location.pathname
+                url: noteId === 'new' ? '/notes/new' : `/notes/${noteId}`
             };
             setTabs([newTab]);
             setActiveTabUid(newUid);
@@ -54,7 +55,7 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // 1. Создание новой вкладки
+    // Создание новой вкладки (кнопка "+")
     const createNewTab = useCallback(() => {
         const newUid = generateUid();
         const newTab: Tab = {
@@ -68,75 +69,69 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
         navigate('/notes/new');
     }, [navigate]);
 
-    // 2. Обновление текущей активной вкладки
-    const ensureActiveTab = useCallback((noteId: string, title: string, url: string) => {
-        setTabs(prevTabs => {
-            const currentUid = activeTabUidRef.current;
+    // Открыть заметку В ТЕКУЩЕЙ вкладке (замена содержимого + навигация)
+    const openNoteInCurrentTab = useCallback((noteId: string, title: string) => {
+        const currentUid = activeTabUidRef.current;
+        if (!currentUid) return;
 
-            // Если активная вкладка есть - обновляем её
-            if (currentUid && prevTabs.some(t => t.uid === currentUid)) {
-                return prevTabs.map(tab => {
-                    if (tab.uid === currentUid) {
-                        if (tab.noteId === noteId && tab.title === title && tab.url === url) return tab;
-                        return { ...tab, noteId, title, url };
+        setTabs(prevTabs =>
+            prevTabs.map(tab =>
+                tab.uid === currentUid
+                    ? { ...tab, noteId, title, url: `/notes/${noteId}` }
+                    : tab
+            )
+        );
+        navigate(`/notes/${noteId}`);
+    }, [navigate]);
+
+    // Обновить данные текущей вкладки (когда заметка загрузилась, без навигации)
+    const updateCurrentTabNote = useCallback((noteId: string, title: string) => {
+        const currentUid = activeTabUidRef.current;
+        if (!currentUid) return;
+
+        setTabs(prevTabs =>
+            prevTabs.map(tab => {
+                if (tab.uid === currentUid) {
+                    // Обновляем только если это та же заметка или вкладка была "новой"
+                    if (tab.noteId === noteId || tab.noteId === 'new') {
+                        return { ...tab, noteId, title, url: `/notes/${noteId}` };
                     }
-                    return tab;
-                });
-            }
-
-            // Если вкладки нет (потерялась), но список пуст или всего 1 элемент - используем его
-            if (prevTabs.length === 1) {
-                const singleTab = prevTabs[0];
-                // Синхронизируем ID если он сбился
-                if (currentUid !== singleTab.uid) {
-                    // Используем setTimeout только как fallback, в нормальном потоке это не должно срабатывать часто
-                    setTimeout(() => setActiveTabUid(singleTab.uid), 0);
                 }
-                return [{ ...singleTab, noteId, title, url }];
-            }
-
-            // Fallback: создаем новую, если совсем все потерялось
-            const newUid = generateUid();
-            setTimeout(() => setActiveTabUid(newUid), 0);
-            return [...prevTabs, { uid: newUid, noteId, title, url }];
-        });
+                return tab;
+            })
+        );
     }, []);
 
-    // 3. Закрытие вкладки (ИСПРАВЛЕНО)
+    // Закрытие вкладки
     const closeTab = useCallback((e: MouseEvent | null, uid: string) => {
         if (e) {
             e.stopPropagation();
             e.preventDefault();
         }
 
-        // Мы используем текущее состояние tabs из замыкания, чтобы выполнить логику синхронно
-        // Сначала вычисляем, каким будет новый массив
         const remainingTabs = tabs.filter(t => t.uid !== uid);
 
-        // СЦЕНАРИЙ 1: Мы закрываем ПОСЛЕДНЮЮ вкладку
+        // Закрываем последнюю вкладку — создаём пустую
         if (remainingTabs.length === 0) {
             const newUid = generateUid();
-            const newTab = {
+            const newTab: Tab = {
                 uid: newUid,
                 noteId: 'new',
                 title: 'Новая вкладка',
                 url: '/notes/new'
             };
 
-            // ВАЖНО: Обновляем всё СИНХРОННО. Никаких setTimeout.
             setTabs([newTab]);
             setActiveTabUid(newUid);
             navigate('/notes/new');
             return;
         }
 
-        // СЦЕНАРИЙ 2: Обычное закрытие
         setTabs(remainingTabs);
 
-        // Если закрыли активную, нужно переключиться
+        // Если закрыли активную — переключаемся
         if (uid === activeTabUid) {
             const tabIndex = tabs.findIndex(t => t.uid === uid);
-            // Пытаемся взять левого соседа, если нет - берем того, кто встал на это место (справа)
             const newActiveTab = remainingTabs[tabIndex - 1] || remainingTabs[tabIndex] || remainingTabs[0];
 
             if (newActiveTab) {
@@ -151,7 +146,8 @@ export const TabsProvider = ({ children }: { children: ReactNode }) => {
             tabs,
             activeTabUid,
             createNewTab,
-            ensureActiveTab,
+            openNoteInCurrentTab,  // ← ДОБАВЛЕНО
+            updateCurrentTabNote,
             closeTab,
             setActiveTabUid
         }}>

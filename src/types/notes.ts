@@ -33,15 +33,15 @@ export interface NoteListResponse {
 // ── Query params для GET /notes ──
 
 export interface GetNotesParams {
+    searchTerm?: string;
+    searchMode?: SearchMode;
     status?: NoteStatus;
     sourceType?: NoteSourceType;
-    category?: string;
-    createdFrom?: string;   // ISO date
+    category?: NoteCategory;
+    createdFrom?: string;
     createdTo?: string;
     updatedFrom?: string;
     updatedTo?: string;
-    searchTerm?: string;
-    searchMode?: SearchMode;
     sortBy?: NoteSortBy;
     sortDirection?: SortDirection;
     page?: number;

@@ -1,15 +1,16 @@
-import { Link, useLocation } from "react-router-dom";
+// src/components/layout/AppSidebar.tsx
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { notesApi } from "@/api/notes";
+import { useTabs } from "@/features/tabs/TabsContext";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import type { NoteListItemDto } from "@/types/notes"; // 👈 Добавляем импорт типа
+import type { NoteListItemDto } from "@/types/notes";
 import {
     PanelLeftClose,
     PanelLeftOpen,
-    Plus,
     Search,
     LogOut,
     FileText,
@@ -37,14 +38,45 @@ interface AppSidebarProps {
 export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
     const { logout, user } = useAuth();
     const location = useLocation();
+    const navigate = useNavigate();
 
-    // 👇 ИСПРАВЛЕНИЕ: оборачиваем вызов в стрелочную функцию
+    // Получаем состояние вкладок для возврата к последней активной
+    const { openNoteInCurrentTab, tabs, activeTabUid } = useTabs();
+
     const { data, isLoading } = useQuery({
-        queryKey: ['notes'],
-        queryFn: () => notesApi.getAll(), // 👈 Теперь это правильная сигнатура
+        queryKey: ['notes', 'sidebar'],
+        queryFn: () => notesApi.getAll({
+            pageSize: 50,
+            sortBy: 'CreatedAt',
+            sortDirection: 'Descending'
+        }),
     });
-
     const notes = data?.notes || [];
+
+    // Клик по заметке в сайдбаре — открывает в текущей вкладке
+    const handleNoteClick = (e: React.MouseEvent, noteId: string, noteTitle: string) => {
+        e.preventDefault();
+        openNoteInCurrentTab(noteId, noteTitle || "Без названия");
+    };
+
+    // Навигация к рабочей области заметок
+    const handleNotesClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+
+        // Если мы уже в разделе заметок, ничего не делаем
+        if (location.pathname.startsWith('/notes')) {
+            return;
+        }
+
+        // Если мы в другом разделе, ищем активную вкладку и возвращаемся к ней
+        const activeTab = tabs.find(t => t.uid === activeTabUid);
+        const targetUrl = activeTab ? activeTab.url : '/notes/new';
+
+        navigate(targetUrl);
+    };
+
+    // Проверяем, находимся ли мы сейчас в рабочей области заметок
+    const isNotesActive = location.pathname.startsWith('/notes');
 
     return (
         <aside
@@ -53,6 +85,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 isOpen ? "w-[280px]" : "w-[70px]"
             )}
         >
+
             {/* 1. ШАПКА */}
             <div className={cn("flex items-center h-14 px-3 flex-shrink-0 transition-all duration-300", isOpen ? "justify-between" : "justify-center")}>
                 <div className={cn(
@@ -94,25 +127,25 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     </Button>
                 </Link>
 
-                <Link to="/" className="block">
-                    <Button
-                        variant={location.pathname === "/" ? "secondary" : "ghost"}
-                        className={cn(
-                            "h-10 transition-all duration-300 overflow-hidden border border-transparent",
-                            location.pathname === "/" ? "bg-zinc-200 text-zinc-900" : "hover:bg-zinc-200/50 text-zinc-600",
-                            isOpen ? "w-full justify-start gap-2 px-4" : "w-10 justify-center px-0 mx-auto"
-                        )}
-                        title={!isOpen ? "Новая заметка" : undefined}
-                    >
-                        <Plus className="h-5 w-5 shrink-0" />
-                        <span className={cn(
-                            "truncate transition-all duration-300",
-                            isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 hidden"
-                        )}>
-                            Новая заметка
-                        </span>
-                    </Button>
-                </Link>
+                {/* Главная кнопка рабочего пространства заметок */}
+                <Button
+                    variant={isNotesActive ? "secondary" : "ghost"}
+                    onClick={handleNotesClick}
+                    className={cn(
+                        "h-10 transition-all duration-300 overflow-hidden border border-transparent",
+                        isNotesActive ? "bg-zinc-200 text-zinc-900" : "hover:bg-zinc-200/50 text-zinc-600",
+                        isOpen ? "w-full justify-start gap-2 px-4" : "w-10 justify-center px-0 mx-auto"
+                    )}
+                    title={!isOpen ? "Заметки" : undefined}
+                >
+                    <FileText className="h-5 w-5 shrink-0" />
+                    <span className={cn(
+                        "truncate transition-all duration-300",
+                        isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 hidden"
+                    )}>
+                        Заметки
+                    </span>
+                </Button>
 
                 <Link to="/search" className="block">
                     <Button
@@ -153,28 +186,27 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             <div className="text-center text-zinc-400 text-xs py-4">Нет заметок</div>
                         ) : (
                             <div className="space-y-0.5 animate-in fade-in duration-300">
-                                {/* 👇 ИСПРАВЛЕНИЕ: добавляем типизацию параметра */}
                                 {notes.map((note: NoteListItemDto) => (
-                                    <Link key={note.id} to={`/notes/${note.id}`}>
-                                        <Button
-                                            variant="ghost"
-                                            className={cn(
-                                                "w-full justify-start h-auto py-2 px-2 text-left font-normal overflow-hidden",
-                                                location.pathname === `/notes/${note.id}`
-                                                    ? "bg-zinc-200/60 text-zinc-900"
-                                                    : "text-zinc-600 hover:bg-zinc-200/40"
-                                            )}
-                                        >
-                                            <div className="flex flex-col gap-0.5 w-full min-w-0">
-                                                <span className="truncate text-sm font-medium">
-                                                    {note.title || "Без названия"}
-                                                </span>
-                                                <span className="text-[10px] text-zinc-400 truncate">
-                                                    {format(new Date(note.createdAt), "d MMM", { locale: ru })}
-                                                </span>
-                                            </div>
-                                        </Button>
-                                    </Link>
+                                    <Button
+                                        key={note.id}
+                                        variant="ghost"
+                                        onClick={(e) => handleNoteClick(e, note.id, note.title)}
+                                        className={cn(
+                                            "w-full justify-start h-auto py-2 px-2 text-left font-normal overflow-hidden",
+                                            location.pathname === `/notes/${note.id}`
+                                                ? "bg-zinc-200/60 text-zinc-900"
+                                                : "text-zinc-600 hover:bg-zinc-200/40"
+                                        )}
+                                    >
+                                        <div className="flex flex-col gap-0.5 w-full min-w-0">
+                                            <span className="truncate text-sm font-medium">
+                                                {note.title || "Без названия"}
+                                            </span>
+                                            <span className="text-[10px] text-zinc-400 truncate">
+                                                {format(new Date(note.createdAt), "d MMM", { locale: ru })}
+                                            </span>
+                                        </div>
+                                    </Button>
                                 ))}
                             </div>
                         )}

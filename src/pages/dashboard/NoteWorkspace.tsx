@@ -254,7 +254,7 @@ export default function NoteWorkspace() {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
-    const { tabs, activeTabUid, setActiveTabUid, createNewTab, closeTab, ensureActiveTab } = useTabs();
+    const { tabs, activeTabUid, setActiveTabUid, createNewTab, closeTab, updateCurrentTabNote } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
     const [isRightSidebarOpen, setRightSidebarOpen] = useState(true);
@@ -264,7 +264,7 @@ export default function NoteWorkspace() {
     const [localContent, setLocalContent] = useState("");
     const [titleInput, setTitleInput] = useState("");
 
-    // ✅ Определяем режим создания
+    // Определяем режим создания
     const isCreating = !id || id === 'new';
 
     // Запрос заметки (только если НЕ создаём)
@@ -324,14 +324,12 @@ export default function NoteWorkspace() {
         }
     }, [note, viewMode, isEditing]);
 
-    // Синхронизация вкладок - ТОЛЬКО для существующих заметок
+    // Обновляем данные вкладки когда заметка загрузилась
     useEffect(() => {
         if (!isCreating && note && id) {
-            ensureActiveTab(id, note.title || "Без названия", `/notes/${id}`);
+            updateCurrentTabNote(id, note.title || "Без названия");
         }
-    }, [note, id, isCreating, ensureActiveTab]);
-
-    const handleCreateNew = () => createNewTab();
+    }, [note, id, isCreating, updateCurrentTabNote]);
 
     const handleTabClick = (uid: string, url: string) => {
         setActiveTabUid(uid);
@@ -436,7 +434,7 @@ export default function NoteWorkspace() {
                     })}
 
                     <div
-                        onClick={handleCreateNew}
+                        onClick={createNewTab}
                         className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-md hover:bg-zinc-200 cursor-pointer text-zinc-500 transition-colors"
                         title="Новая вкладка"
                     >
@@ -455,7 +453,7 @@ export default function NoteWorkspace() {
             <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 flex flex-col min-w-0 bg-white">
 
-                    {/* Toolbar */}
+                    {/* Toolbar - только для существующих заметок */}
                     {!isCreating && note && (
                         <div className="h-10 border-b border-zinc-100 bg-white flex items-center justify-between px-4 flex-shrink-0 select-none">
                             <div className="flex items-center gap-3">
@@ -523,7 +521,7 @@ export default function NoteWorkspace() {
                         </div>
                     )}
 
-                    {/* ✅ КОНТЕНТ */}
+                    {/* КОНТЕНТ */}
                     {isCreating ? (
                         <NoteCreator />
                     ) : (
@@ -533,7 +531,7 @@ export default function NoteWorkspace() {
                     )}
                 </div>
 
-                {/* Sidebar */}
+                {/* Sidebar - только для существующих заметок */}
                 {!isCreating && note && (
                     <aside className={cn(
                         "bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 overflow-hidden flex flex-col flex-shrink-0",
