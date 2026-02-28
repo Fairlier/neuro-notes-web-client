@@ -18,7 +18,6 @@ import {
     Info,
     Plus,
     X,
-    MoreVertical,
     Trash2,
     Pencil,
     Mic,
@@ -37,12 +36,6 @@ import { Textarea } from "@/components/ui/textarea";
 import Markdown from 'react-markdown';
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 type ViewMode = 'raw' | 'structured' | 'summary';
 type SidebarView = 'info' | 'chat';
@@ -462,7 +455,18 @@ export default function NoteWorkspace() {
                                 <span className="text-[10px] text-zinc-400 uppercase tracking-wide">
                                     {note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}
                                 </span>
-                                <span className="text-[10px] text-zinc-400">
+
+                                {/* Отображение Категории, если она существует */}
+                                {note.category && (
+                                    <>
+                                        <Separator orientation="vertical" className="h-3 bg-zinc-200" />
+                                        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">
+                                            {note.category}
+                                        </span>
+                                    </>
+                                )}
+
+                                <span className="text-[10px] text-zinc-400 ml-2">
                                     {format(new Date(note.updatedAt || note.createdAt), "d MMM, HH:mm", { locale: ru })}
                                 </span>
                             </div>
@@ -505,18 +509,7 @@ export default function NoteWorkspace() {
                                     {isEditing ? <><BookOpen className="h-3.5 w-3.5" /> Preview</> : <><Pencil className="h-3.5 w-3.5" /> Edit</>}
                                 </Button>
 
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
-                                            <Trash2 className="mr-2 h-4 w-4" /> Удалить
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                {/* Кнопка с троеточием удалена отсюда */}
                             </div>
                         </div>
                     )}
@@ -583,9 +576,24 @@ export default function NoteWorkspace() {
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-zinc-400">ID</span>
-                                            <span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]">{note.id}</span>
+                                            <span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]" title={note.id}>{note.id}</span>
                                         </div>
                                     </div>
+                                </div>
+
+                                <Separator className="my-5 bg-zinc-200/50" />
+
+                                {/* Новая секция действий (удаление) перенесена сюда */}
+                                <div className="space-y-3">
+                                    <div className="text-xs font-medium text-zinc-900">Действия</div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-red-100 h-8 text-xs font-normal transition-colors"
+                                        onClick={handleDelete}
+                                    >
+                                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Удалить заметку
+                                    </Button>
                                 </div>
                             </ScrollArea>
                         )}
