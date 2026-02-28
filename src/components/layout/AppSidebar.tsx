@@ -5,6 +5,7 @@ import { notesApi } from "@/api/notes";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import type { NoteListItemDto } from "@/types/notes"; // 👈 Добавляем импорт типа
 import {
     PanelLeftClose,
     PanelLeftOpen,
@@ -16,7 +17,7 @@ import {
     Settings,
     User,
     ChevronRight,
-    MessageSquare // Иконка чата
+    MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -37,9 +38,10 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
     const { logout, user } = useAuth();
     const location = useLocation();
 
+    // 👇 ИСПРАВЛЕНИЕ: оборачиваем вызов в стрелочную функцию
     const { data, isLoading } = useQuery({
         queryKey: ['notes'],
-        queryFn: notesApi.getAll,
+        queryFn: () => notesApi.getAll(), // 👈 Теперь это правильная сигнатура
     });
 
     const notes = data?.notes || [];
@@ -70,11 +72,8 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
             {/* 2. ДЕЙСТВИЯ */}
             <div className="p-3 flex flex-col gap-2 flex-shrink-0">
-
-                {/* --- ССЫЛКА НА ОБЩИЙ ЧАТ --- */}
                 <Link to="/chat" className="block">
                     <Button
-                        // Подсветка, если мы на странице чата
                         variant={location.pathname === "/chat" ? "secondary" : "ghost"}
                         className={cn(
                             "h-10 transition-all duration-300 overflow-hidden border border-transparent",
@@ -137,7 +136,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
             <Separator className="bg-zinc-200 w-auto mx-3 mt-2" />
 
-            {/* 3. СПИСОК ЗАМЕТОК (Без изменений) */}
+            {/* 3. СПИСОК ЗАМЕТОК */}
             <ScrollArea className="flex-1 py-4 px-3">
                 {isOpen && (
                     <div className="px-2 mb-2 text-[10px] font-semibold text-zinc-400 uppercase tracking-wider animate-in fade-in duration-300">
@@ -147,12 +146,15 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 {isOpen ? (
                     <>
                         {isLoading ? (
-                            <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-zinc-400"/></div>
+                            <div className="flex justify-center p-4">
+                                <Loader2 className="h-4 w-4 animate-spin text-zinc-400"/>
+                            </div>
                         ) : notes.length === 0 ? (
                             <div className="text-center text-zinc-400 text-xs py-4">Нет заметок</div>
                         ) : (
                             <div className="space-y-0.5 animate-in fade-in duration-300">
-                                {notes.map((note) => (
+                                {/* 👇 ИСПРАВЛЕНИЕ: добавляем типизацию параметра */}
+                                {notes.map((note: NoteListItemDto) => (
                                     <Link key={note.id} to={`/notes/${note.id}`}>
                                         <Button
                                             variant="ghost"
@@ -164,7 +166,9 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                             )}
                                         >
                                             <div className="flex flex-col gap-0.5 w-full min-w-0">
-                                                <span className="truncate text-sm font-medium">{note.title || "Без названия"}</span>
+                                                <span className="truncate text-sm font-medium">
+                                                    {note.title || "Без названия"}
+                                                </span>
                                                 <span className="text-[10px] text-zinc-400 truncate">
                                                     {format(new Date(note.createdAt), "d MMM", { locale: ru })}
                                                 </span>
@@ -180,7 +184,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 )}
             </ScrollArea>
 
-            {/* 4. ПОДВАЛ (Без изменений) */}
+            {/* 4. ПОДВАЛ */}
             <div className="p-3 border-t border-zinc-200 bg-zinc-50/50 flex flex-col gap-1 flex-shrink-0">
                 <Link to="/settings" className="block">
                     <Button
@@ -225,7 +229,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             )}
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56 ml-2" side={isOpen ? "right" : "right"} sideOffset={5}>
+                    <DropdownMenuContent align="start" className="w-56 ml-2" side="right" sideOffset={5}>
                         <DropdownMenuItem className="cursor-pointer">
                             <User className="mr-2 h-4 w-4" />
                             <span>Профиль</span>

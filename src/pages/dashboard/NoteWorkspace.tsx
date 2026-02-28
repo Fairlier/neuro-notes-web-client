@@ -1,3 +1,4 @@
+// src/pages/dashboard/NoteWorkspace.tsx
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -148,7 +149,7 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
         if (scrollRef.current) {
             scrollRef.current.scrollIntoView({ behavior: "smooth" });
         }
-    }, [data?.messages, sendMutation.isPending]); // ✅ Добавлен sendMutation.isPending
+    }, [data?.messages, sendMutation.isPending]);
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -163,9 +164,7 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
     };
 
     return (
-        // ✅ ИСПРАВЛЕНО: flex-1 + min-h-0 + overflow-hidden
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-zinc-50/30">
-            {/* Список сообщений */}
             <ScrollArea className="flex-1 min-h-0 px-3 py-4">
                 <div className="flex flex-col gap-3">
                     {isLoading ? (
@@ -191,9 +190,7 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
                                         "rounded-lg px-3 py-2 text-xs leading-relaxed shadow-sm break-words overflow-hidden",
                                         isUser ? "bg-blue-600 text-white" : "bg-white border border-zinc-200 text-zinc-700"
                                     )}>
-                                        {isUser ? (
-                                            msg.content
-                                        ) : (
+                                        {isUser ? msg.content : (
                                             <div className="prose prose-xs max-w-none prose-zinc">
                                                 <Markdown>{msg.content || ""}</Markdown>
                                             </div>
@@ -217,7 +214,6 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
                 </div>
             </ScrollArea>
 
-            {/* Ввод - ✅ flex-shrink-0 чтобы не сжимался */}
             <div className="p-3 border-t border-zinc-200 bg-white flex-shrink-0">
                 <div className="relative">
                     <Textarea
@@ -252,6 +248,7 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
     );
 };
 
+// --- ГЛАВНЫЙ КОМПОНЕНТ ---
 export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -267,42 +264,41 @@ export default function NoteWorkspace() {
     const [localContent, setLocalContent] = useState("");
     const [titleInput, setTitleInput] = useState("");
 
-    const isCreating = id === 'new';
+    // ✅ Определяем режим создания
+    const isCreating = !id || id === 'new';
 
+    // Запрос заметки (только если НЕ создаём)
     const { data: note, isLoading, isError } = useQuery({
         queryKey: ['note', id],
         queryFn: () => notesApi.getById(id!),
-        enabled: !!id && !isCreating,
+        enabled: Boolean(id) && id !== 'new',
     });
 
+    // Мутации
     const transcribeMutation = useMutation({
         mutationFn: notesApi.transcribe,
-        onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['note', id] }) }
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
     });
 
     const structureMutation = useMutation({
         mutationFn: notesApi.structure,
-        onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['note', id] }) }
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
     });
 
     const summarizeMutation = useMutation({
         mutationFn: notesApi.summarize,
-        onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['note', id] }) }
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
     });
 
     const saveChangesMutation = useMutation({
-        mutationFn: (data: { id: string, title: string, content: string, field: ViewMode }) => {
+        mutationFn: (data: { id: string; title: string; content: string; field: ViewMode }) => {
             const contentField = data.field === 'raw' ? 'rawText' :
-                data.field === 'structured' ? 'structuredText' :
-                    'summaryText';
-            return notesApi.update(data.id, {
-                title: data.title,
-                [contentField]: data.content
-            });
+                data.field === 'structured' ? 'structuredText' : 'summaryText';
+            return notesApi.update(data.id, { title: data.title, [contentField]: data.content });
         },
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['note', id] });
-            await queryClient.invalidateQueries({ queryKey: ['notes'] });
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['note', id] });
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
         }
     });
 
@@ -310,47 +306,32 @@ export default function NoteWorkspace() {
         mutationFn: notesApi.delete,
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['notes'] });
-            if (activeTabUid) {
-                closeTab(null, activeTabUid);
-            }
-        },
-        onError: (err) => {
-            console.error("Ошибка при удалении:", err);
+            if (activeTabUid) closeTab(null, activeTabUid);
         }
     });
 
+    // Синхронизация контента
     useEffect(() => {
         if (note) {
-            const content = (() => {
-                switch (viewMode) {
-                    case 'summary': return note.summaryText || "";
-                    case 'structured': return note.structuredText || "";
-                    case 'raw': default: return note.rawText || "";
-                }
-            })();
+            const content = viewMode === 'summary' ? note.summaryText || "" :
+                viewMode === 'structured' ? note.structuredText || "" :
+                    note.rawText || "";
 
-            if (localContent !== content && !isEditing) {
+            if (!isEditing) {
                 setLocalContent(content);
-            }
-
-            if (titleInput !== note.title && !isEditing) {
                 setTitleInput(note.title || "");
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [note, viewMode, isEditing]);
 
+    // Синхронизация вкладок - ТОЛЬКО для существующих заметок
     useEffect(() => {
-        if (isCreating) {
-            ensureActiveTab('new', 'Новая заметка', '/notes/new');
-        } else if (note && id) {
+        if (!isCreating && note && id) {
             ensureActiveTab(id, note.title || "Без названия", `/notes/${id}`);
         }
     }, [note, id, isCreating, ensureActiveTab]);
 
-    const handleCreateNew = () => {
-        createNewTab();
-    };
+    const handleCreateNew = () => createNewTab();
 
     const handleTabClick = (uid: string, url: string) => {
         setActiveTabUid(uid);
@@ -364,25 +345,28 @@ export default function NoteWorkspace() {
     };
 
     const toggleEditMode = () => {
-        if (isEditing) {
-            if (note && id) {
-                saveChangesMutation.mutate({
-                    id,
-                    title: titleInput,
-                    content: localContent,
-                    field: viewMode
-                });
-            }
-            setIsEditing(false);
-        } else {
-            setIsEditing(true);
+        if (isEditing && note && id) {
+            saveChangesMutation.mutate({ id, title: titleInput, content: localContent, field: viewMode });
         }
+        setIsEditing(!isEditing);
     };
 
-    const renderContent = () => {
-        if (isCreating) return <NoteCreator />;
-        if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-zinc-400"/></div>;
-        if (isError || !note) return <div className="flex h-full items-center justify-center text-zinc-400">Заметка не найдена</div>;
+    const renderNoteContent = () => {
+        if (isLoading) {
+            return (
+                <div className="flex h-full items-center justify-center">
+                    <Loader2 className="animate-spin text-zinc-400" />
+                </div>
+            );
+        }
+
+        if (isError || !note) {
+            return (
+                <div className="flex h-full items-center justify-center text-zinc-400">
+                    Заметка не найдена
+                </div>
+            );
+        }
 
         return (
             <div className="max-w-4xl mx-auto p-8 lg:p-12 h-full flex flex-col">
@@ -394,15 +378,12 @@ export default function NoteWorkspace() {
                         placeholder="Без названия"
                     />
                 ) : (
-                    <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none cursor-default">
+                    <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight cursor-default">
                         {titleInput || "Без названия"}
                     </h1>
                 )}
 
-                <div className={cn(
-                    "flex-1 outline-none relative",
-                    !isEditing && "prose prose-zinc max-w-none text-zinc-800 leading-7"
-                )}>
+                <div className={cn("flex-1 outline-none relative", !isEditing && "prose prose-zinc max-w-none text-zinc-800 leading-7")}>
                     {isEditing ? (
                         <Textarea
                             value={localContent}
@@ -410,15 +391,12 @@ export default function NoteWorkspace() {
                             className="w-full h-full min-h-[60vh] resize-none bg-transparent border-0 focus-visible:ring-0 p-0 text-base leading-relaxed font-mono text-zinc-800"
                             placeholder="Начните писать..."
                         />
+                    ) : localContent ? (
+                        <div className="prose prose-zinc max-w-none">
+                            <Markdown>{localContent}</Markdown>
+                        </div>
                     ) : (
-                        localContent ? (
-                            /* --- ИСПРАВЛЕНИЕ: Обертка div для Markdown --- */
-                            <div className="prose prose-zinc max-w-none">
-                                <Markdown>{localContent}</Markdown>
-                            </div>
-                        ) : (
-                            <span className="text-zinc-400 italic">Нет содержимого</span>
-                        )
+                        <span className="text-zinc-400 italic">Нет содержимого</span>
                     )}
                 </div>
             </div>
@@ -428,9 +406,9 @@ export default function NoteWorkspace() {
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-white">
 
-            {/* 1. TAB BAR */}
+            {/* TAB BAR */}
             <div className="h-10 bg-zinc-100/80 flex items-end justify-between px-2 border-b border-zinc-200 select-none flex-shrink-0 gap-2">
-                <div className="flex items-end flex-1 overflow-x-auto no-scrollbar mask-gradient-right">
+                <div className="flex items-end flex-1 overflow-x-auto no-scrollbar">
                     {tabs.map((tab) => {
                         const isActive = tab.uid === activeTabUid;
                         return (
@@ -446,14 +424,10 @@ export default function NoteWorkspace() {
                             >
                                 <File className={cn("h-3 w-3 shrink-0", isActive ? "text-blue-500" : "text-zinc-400")} />
                                 <span className="truncate flex-1">{tab.title}</span>
-
                                 <div
                                     role="button"
                                     onClick={(e) => closeTab(e, tab.uid)}
-                                    className={cn(
-                                        "opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-zinc-200 transition-opacity",
-                                        isActive && "opacity-100"
-                                    )}
+                                    className={cn("opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-zinc-200 transition-opacity", isActive && "opacity-100")}
                                 >
                                     <X className="h-3 w-3 text-zinc-400 hover:text-zinc-700" />
                                 </div>
@@ -477,34 +451,25 @@ export default function NoteWorkspace() {
                 </div>
             </div>
 
-            {/* MAIN SPLIT AREA */}
+            {/* MAIN AREA */}
             <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 flex flex-col min-w-0 bg-white">
 
                     {/* Toolbar */}
                     {!isCreating && note && (
                         <div className="h-10 border-b border-zinc-100 bg-white flex items-center justify-between px-4 flex-shrink-0 select-none">
-
-                            {/* ЛЕВАЯ ЧАСТЬ */}
                             <div className="flex items-center gap-3">
                                 <StatusBadge status={note.status} />
-
                                 <Separator orientation="vertical" className="h-3 bg-zinc-200" />
                                 <span className="text-[10px] text-zinc-400 uppercase tracking-wide">
                                     {note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}
                                 </span>
-
-                                <span className="text-[10px] text-zinc-400 select-none">
-                                    {note.updatedAt
-                                        ? format(new Date(note.updatedAt), "d MMM, HH:mm", { locale: ru })
-                                        : format(new Date(note.createdAt), "d MMM, HH:mm", { locale: ru })
-                                    }
+                                <span className="text-[10px] text-zinc-400">
+                                    {format(new Date(note.updatedAt || note.createdAt), "d MMM, HH:mm", { locale: ru })}
                                 </span>
                             </div>
 
-                            {/* ПРАВАЯ ЧАСТЬ */}
                             <div className="flex items-center gap-2">
-
                                 <ActionButton
                                     viewMode={viewMode}
                                     sourceType={note.sourceType}
@@ -515,15 +480,20 @@ export default function NoteWorkspace() {
                                 />
 
                                 <div className="flex items-center bg-zinc-100/80 rounded-md p-0.5 border border-zinc-200/50">
-                                    <button onClick={() => setViewMode('raw')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'raw' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900")}>
-                                        <AlignLeft className="h-3 w-3" /> Raw
-                                    </button>
-                                    <button onClick={() => setViewMode('structured')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'structured' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900")}>
-                                        <FileJson className="h-3 w-3" /> Structured
-                                    </button>
-                                    <button onClick={() => setViewMode('summary')} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all", viewMode === 'summary' ? "bg-white text-indigo-600 shadow-sm" : "text-zinc-500 hover:text-zinc-900")}>
-                                        <Sparkles className="h-3 w-3" /> Summary
-                                    </button>
+                                    {(['raw', 'structured', 'summary'] as const).map((mode) => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setViewMode(mode)}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all",
+                                                viewMode === mode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
+                                            )}
+                                        >
+                                            {mode === 'raw' && <><AlignLeft className="h-3 w-3" /> Raw</>}
+                                            {mode === 'structured' && <><FileJson className="h-3 w-3" /> Structured</>}
+                                            {mode === 'summary' && <><Sparkles className="h-3 w-3" /> Summary</>}
+                                        </button>
+                                    ))}
                                 </div>
 
                                 <Separator orientation="vertical" className="h-4 mx-1 bg-zinc-200" />
@@ -531,113 +501,91 @@ export default function NoteWorkspace() {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className={cn(
-                                        "h-7 px-2 gap-1.5 text-xs font-normal transition-colors",
-                                        isEditing
-                                            ? "text-blue-600 bg-blue-50 hover:bg-blue-100"
-                                            : "text-zinc-500 hover:text-zinc-700"
-                                    )}
+                                    className={cn("h-7 px-2 gap-1.5 text-xs font-normal", isEditing ? "text-blue-600 bg-blue-50" : "text-zinc-500")}
                                     onClick={toggleEditMode}
-                                    title={isEditing ? "Сохранить и читать" : "Редактировать"}
                                 >
-                                    {isEditing ? (
-                                        <>
-                                            <BookOpen className="h-3.5 w-3.5" />
-                                            <span className="hidden sm:inline">Preview</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Pencil className="h-3.5 w-3.5" />
-                                            <span className="hidden sm:inline">Edit</span>
-                                        </>
-                                    )}
+                                    {isEditing ? <><BookOpen className="h-3.5 w-3.5" /> Preview</> : <><Pencil className="h-3.5 w-3.5" /> Edit</>}
                                 </Button>
 
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-700">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400">
                                             <MoreVertical className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem
-                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                            onClick={handleDelete}
-                                        >
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            <span>Удалить</span>
+                                        <DropdownMenuItem className="text-red-600" onClick={handleDelete}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Удалить
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
                         </div>
                     )}
-                    <ScrollArea className="flex-1">{renderContent()}</ScrollArea>
+
+                    {/* ✅ КОНТЕНТ */}
+                    {isCreating ? (
+                        <NoteCreator />
+                    ) : (
+                        <ScrollArea className="flex-1">
+                            {renderNoteContent()}
+                        </ScrollArea>
+                    )}
                 </div>
 
+                {/* Sidebar */}
                 {!isCreating && note && (
-                    <aside className={cn("bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 ease-in-out overflow-hidden flex flex-col backdrop-blur-sm flex-shrink-0", isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0")}>
-
-                        {/* --- ШАПКА САЙДБАРА --- */}
+                    <aside className={cn(
+                        "bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 overflow-hidden flex flex-col flex-shrink-0",
+                        isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0"
+                    )}>
                         <div className="h-10 border-b border-zinc-200/50 flex items-center justify-between px-3 flex-shrink-0">
-
-                            {/* Левая часть: Кнопки (ПОРЯДОК: Info -> Chat -> Audio) */}
                             <div className="flex items-center gap-1">
-
-                                {/* 1. INFO */}
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className={cn("h-7 w-7 transition-colors", sidebarView === 'info' ? "text-zinc-900 bg-zinc-200/50" : "text-zinc-400 hover:text-zinc-700")}
+                                    className={cn("h-7 w-7", sidebarView === 'info' ? "text-zinc-900 bg-zinc-200/50" : "text-zinc-400")}
                                     onClick={() => setSidebarView('info')}
-                                    title="Информация"
                                 >
                                     <Info className="h-4 w-4" />
                                 </Button>
-
-                                {/* 2. CHAT */}
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className={cn("h-7 w-7 transition-colors", sidebarView === 'chat' ? "text-purple-600 bg-purple-50" : "text-zinc-400 hover:text-purple-600 hover:bg-purple-50")}
+                                    className={cn("h-7 w-7", sidebarView === 'chat' ? "text-purple-600 bg-purple-50" : "text-zinc-400")}
                                     onClick={() => setSidebarView('chat')}
-                                    title="Чат с заметкой"
                                 >
                                     <MessageSquareText className="h-4 w-4" />
                                 </Button>
-
-                                {/* 3. AUDIO */}
                                 {note.sourceType === 'AudioFile' && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 text-zinc-400 hover:text-blue-600 hover:bg-blue-50"
-                                        onClick={() => console.log("Play Audio")}
-                                        title="Прослушать аудио"
-                                    >
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400">
                                         <FileAudio className="h-4 w-4" />
                                     </Button>
                                 )}
                             </div>
-
-                            {/* Правая часть: Заголовок */}
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
                                 {sidebarView === 'chat' ? 'AI Chat' : 'Info'}
                             </span>
                         </div>
 
-                        {/* КОНТЕНТ САЙДБАРА */}
                         {sidebarView === 'chat' ? (
                             <NoteChatPanel noteId={note.id} />
                         ) : (
                             <ScrollArea className="flex-1 p-4">
-                                <div className="space-y-6">
-                                    <div className="space-y-3">
-                                        <div className="text-xs font-medium text-zinc-900">Свойства</div>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between text-xs"><span className="text-zinc-400">Создано</span><span className="text-zinc-600">{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span></div>
-                                            <div className="flex justify-between text-xs"><span className="text-zinc-400">Обновлено</span><span className="text-zinc-600">{note.updatedAt ? format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm") : "-"}</span></div>
-                                            <div className="flex justify-between text-xs"><span className="text-zinc-400">ID</span><span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]" title={note.id}>{note.id}</span></div>
+                                <div className="space-y-3">
+                                    <div className="text-xs font-medium text-zinc-900">Свойства</div>
+                                    <div className="space-y-2 text-xs">
+                                        <div className="flex justify-between">
+                                            <span className="text-zinc-400">Создано</span>
+                                            <span className="text-zinc-600">{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-zinc-400">Обновлено</span>
+                                            <span className="text-zinc-600">{note.updatedAt ? format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm") : "-"}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-zinc-400">ID</span>
+                                            <span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]">{note.id}</span>
                                         </div>
                                     </div>
                                 </div>

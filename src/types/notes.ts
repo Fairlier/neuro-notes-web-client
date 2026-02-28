@@ -3,7 +3,7 @@
 export type NoteStatus = 'Pending' | 'Raw' | 'Structured' | 'Summarized' | 'Failed';
 export type NoteSourceType = 'DirectText' | 'AudioFile';
 export type NoteCategory = 'Finance' | 'Ideas' | 'Personal' | 'Reference' | 'Study' | 'Work' | 'Other';
-export type SearchMode = 'Semantic' | 'Text';
+export type SearchMode = 'Semantic' | 'Title';
 export type NoteSortBy = 'CreatedAt' | 'UpdatedAt' | 'Title' | 'Status' | 'SourceType' | 'Category';
 export type SortDirection = 'Ascending' | 'Descending';
 

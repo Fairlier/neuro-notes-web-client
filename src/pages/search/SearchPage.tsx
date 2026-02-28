@@ -111,9 +111,14 @@ export default function SearchPage() {
     const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
     const [isFiltersOpen, setFiltersOpen] = useState(false);
 
-    // Фильтры
+    // Пагинация
+    const [currentPage, setCurrentPage] = useState(
+        parseInt(searchParams.get('page') || '1', 10)
+    );
+
+    // Фильтры - по умолчанию Title
     const [searchMode, setSearchMode] = useState<SearchMode>(
-        (searchParams.get('mode') as SearchMode) || 'Semantic'
+        (searchParams.get('mode') as SearchMode) || 'Title'
     );
     const [status, setStatus] = useState<NoteStatus | 'all'>(
         (searchParams.get('status') as NoteStatus) || 'all'
@@ -143,26 +148,27 @@ export default function SearchPage() {
     useEffect(() => {
         const params = new URLSearchParams();
         if (debouncedSearch) params.set('q', debouncedSearch);
-        if (searchMode !== 'Semantic') params.set('mode', searchMode);
+        if (searchMode !== 'Title') params.set('mode', searchMode);
         if (status !== 'all') params.set('status', status);
         if (sourceType !== 'all') params.set('sourceType', sourceType);
         if (category !== 'all') params.set('category', category);
         if (sortBy !== 'CreatedAt') params.set('sortBy', sortBy);
         if (sortDirection !== 'Descending') params.set('sortDir', sortDirection);
+        if (currentPage > 1) params.set('page', currentPage.toString());
 
         setSearchParams(params, { replace: true });
-    }, [debouncedSearch, searchMode, status, sourceType, category, sortBy, sortDirection, setSearchParams]);
+    }, [debouncedSearch, searchMode, status, sourceType, category, sortBy, sortDirection, currentPage, setSearchParams]);
 
     // Формируем параметры запроса
     const queryParams: GetNotesParams = {
         searchTerm: debouncedSearch || undefined,
-        searchMode: debouncedSearch ? searchMode : undefined,
+        searchMode: searchMode,
         status: status !== 'all' ? status : undefined,
         sourceType: sourceType !== 'all' ? sourceType : undefined,
         category: category !== 'all' ? category : undefined,
         sortBy,
         sortDirection,
-        page: 1,
+        page: currentPage,
         pageSize: 50,
     };
 
@@ -177,18 +183,68 @@ export default function SearchPage() {
         navigate(`/notes/${noteId}`);
     };
 
+    // Обработчики изменения фильтров с сбросом страницы
+    const handleSearchModeChange = () => {
+        setSearchMode(searchMode === 'Semantic' ? 'Title' : 'Semantic');
+        setCurrentPage(1);
+    };
+
+    const handleStatusChange = (v: NoteStatus | 'all') => {
+        setStatus(v);
+        setCurrentPage(1);
+    };
+
+    const handleSourceTypeChange = (v: NoteSourceType | 'all') => {
+        setSourceType(v);
+        setCurrentPage(1);
+    };
+
+    const handleCategoryChange = (v: NoteCategory | 'all') => {
+        setCategory(v);
+        setCurrentPage(1);
+    };
+
+    const handleSortByChange = (v: NoteSortBy) => {
+        setSortBy(v);
+        setCurrentPage(1);
+    };
+
+    const handleSortDirectionChange = (v: SortDirection) => {
+        setSortDirection(v);
+        setCurrentPage(1);
+    };
+
+    const handleSearchTermChange = (value: string) => {
+        setSearchTerm(value);
+        setCurrentPage(1);
+    };
+
     // Сброс фильтров
     const resetFilters = () => {
         setSearchTerm("");
-        setSearchMode('Semantic');
+        setSearchMode('Title');
         setStatus('all');
         setSourceType('all');
         setCategory('all');
         setSortBy('CreatedAt');
         setSortDirection('Descending');
+        setCurrentPage(1);
     };
 
-    const hasActiveFilters = status !== 'all' || sourceType !== 'all' || category !== 'all' || searchMode !== 'Semantic';
+    const hasActiveFilters = status !== 'all' || sourceType !== 'all' || category !== 'all';
+
+    // Обработчики пагинации
+    const handlePreviousPage = () => {
+        if (data?.hasPreviousPage) {
+            setCurrentPage(prev => prev - 1);
+        }
+    };
+
+    const handleNextPage = () => {
+        if (data?.hasNextPage) {
+            setCurrentPage(prev => prev + 1);
+        }
+    };
 
     // Обработка ошибки
     if (isError) {
@@ -213,7 +269,7 @@ export default function SearchPage() {
         <div className="flex flex-col h-full bg-white">
 
             {/* === HEADER === */}
-            <div className="border-b border-zinc-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+            <div className="border-b border-zinc-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6">
 
                     {/* Заголовок */}
@@ -232,8 +288,12 @@ export default function SearchPage() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
                         <Input
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Введите поисковый запрос..."
+                            onChange={(e) => handleSearchTermChange(e.target.value)}
+                            placeholder={
+                                searchMode === 'Semantic'
+                                    ? "Введите поисковый запрос (семантический поиск по смыслу)..."
+                                    : "Введите название заметки..."
+                            }
                             className="w-full h-12 pl-12 pr-32 text-base bg-zinc-50 border-zinc-200 rounded-xl focus-visible:ring-blue-500"
                         />
 
@@ -242,7 +302,7 @@ export default function SearchPage() {
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setSearchMode(searchMode === 'Semantic' ? 'Text' : 'Semantic')}
+                                onClick={handleSearchModeChange}
                                 className={cn(
                                     "h-8 px-3 text-xs gap-1.5 rounded-lg transition-colors",
                                     searchMode === 'Semantic'
@@ -261,7 +321,7 @@ export default function SearchPage() {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => setSearchTerm("")}
+                                    onClick={() => handleSearchTermChange("")}
                                     className="h-8 w-8 text-zinc-400 hover:text-zinc-600"
                                 >
                                     <X className="h-4 w-4" />
@@ -284,11 +344,6 @@ export default function SearchPage() {
                                 >
                                     <SlidersHorizontal className="h-3.5 w-3.5" />
                                     Фильтры
-                                    {hasActiveFilters && (
-                                        <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                                            {[status !== 'all', sourceType !== 'all', category !== 'all'].filter(Boolean).length}
-                                        </span>
-                                    )}
                                     <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isFiltersOpen && "rotate-180")} />
                                 </Button>
                             </CollapsibleTrigger>
@@ -312,11 +367,11 @@ export default function SearchPage() {
                                 {/* Статус */}
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Статус</label>
-                                    <Select value={status} onValueChange={(v) => setStatus(v as NoteStatus | 'all')}>
+                                    <Select value={status} onValueChange={handleStatusChange}>
                                         <SelectTrigger className="h-9 text-xs bg-white">
                                             <SelectValue placeholder="Все" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent position="popper" sideOffset={4}>
                                             <SelectItem value="all">Все статусы</SelectItem>
                                             <SelectItem value="Pending">Pending</SelectItem>
                                             <SelectItem value="Raw">Raw</SelectItem>
@@ -330,11 +385,11 @@ export default function SearchPage() {
                                 {/* Тип источника */}
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Тип</label>
-                                    <Select value={sourceType} onValueChange={(v) => setSourceType(v as NoteSourceType | 'all')}>
+                                    <Select value={sourceType} onValueChange={handleSourceTypeChange}>
                                         <SelectTrigger className="h-9 text-xs bg-white">
                                             <SelectValue placeholder="Все" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent position="popper" sideOffset={4}>
                                             <SelectItem value="all">Все типы</SelectItem>
                                             <SelectItem value="DirectText">Текст</SelectItem>
                                             <SelectItem value="AudioFile">Аудио</SelectItem>
@@ -345,11 +400,11 @@ export default function SearchPage() {
                                 {/* Категория */}
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Категория</label>
-                                    <Select value={category} onValueChange={(v) => setCategory(v as NoteCategory | 'all')}>
+                                    <Select value={category} onValueChange={handleCategoryChange}>
                                         <SelectTrigger className="h-9 text-xs bg-white">
                                             <SelectValue placeholder="Все" />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent position="popper" sideOffset={4}>
                                             <SelectItem value="all">Все категории</SelectItem>
                                             <SelectItem value="Finance">Финансы</SelectItem>
                                             <SelectItem value="Ideas">Идеи</SelectItem>
@@ -365,27 +420,40 @@ export default function SearchPage() {
                                 {/* Сортировка */}
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Сортировка</label>
-                                    <Select value={sortBy} onValueChange={(v) => setSortBy(v as NoteSortBy)}>
+                                    <Select
+                                        value={sortBy}
+                                        onValueChange={handleSortByChange}
+                                        disabled={searchMode === 'Semantic' && !!debouncedSearch}
+                                    >
                                         <SelectTrigger className="h-9 text-xs bg-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent position="popper" sideOffset={4}>
                                             <SelectItem value="CreatedAt">По дате создания</SelectItem>
                                             <SelectItem value="UpdatedAt">По дате обновления</SelectItem>
                                             <SelectItem value="Title">По названию</SelectItem>
                                             <SelectItem value="Status">По статусу</SelectItem>
                                         </SelectContent>
                                     </Select>
+                                    {searchMode === 'Semantic' && debouncedSearch && (
+                                        <p className="text-[10px] text-zinc-400">
+                                            Сортировка по релевантности
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Направление сортировки */}
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Порядок</label>
-                                    <Select value={sortDirection} onValueChange={(v) => setSortDirection(v as SortDirection)}>
+                                    <Select
+                                        value={sortDirection}
+                                        onValueChange={handleSortDirectionChange}
+                                        disabled={searchMode === 'Semantic' && !!debouncedSearch}
+                                    >
                                         <SelectTrigger className="h-9 text-xs bg-white">
                                             <SelectValue />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent position="popper" sideOffset={4}>
                                             <SelectItem value="Descending">Сначала новые</SelectItem>
                                             <SelectItem value="Ascending">Сначала старые</SelectItem>
                                         </SelectContent>
@@ -412,6 +480,9 @@ export default function SearchPage() {
                                 {debouncedSearch && (
                                     <span className="text-zinc-400">
                                         по запросу «<span className="text-zinc-700">{debouncedSearch}</span>»
+                                        {searchMode === 'Semantic' && (
+                                            <span className="ml-1 text-purple-600">(AI поиск)</span>
+                                        )}
                                     </span>
                                 )}
                             </div>
@@ -428,7 +499,11 @@ export default function SearchPage() {
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">
                             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                            <p className="text-sm text-zinc-500">Ищем заметки...</p>
+                            <p className="text-sm text-zinc-500">
+                                {searchMode === 'Semantic' && debouncedSearch
+                                    ? 'Выполняем семантический поиск...'
+                                    : 'Ищем заметки...'}
+                            </p>
                         </div>
                     ) : data?.notes.length === 0 ? (
                         // Пустое состояние
@@ -464,13 +539,14 @@ export default function SearchPage() {
                         </div>
                     )}
 
-                    {/* Пагинация (простая версия) */}
+                    {/* Пагинация */}
                     {data && data.totalPages > 1 && (
                         <div className="flex justify-center gap-2 mt-8">
                             <Button
                                 variant="outline"
                                 size="sm"
                                 disabled={!data.hasPreviousPage}
+                                onClick={handlePreviousPage}
                             >
                                 Назад
                             </Button>
@@ -481,6 +557,7 @@ export default function SearchPage() {
                                 variant="outline"
                                 size="sm"
                                 disabled={!data.hasNextPage}
+                                onClick={handleNextPage}
                             >
                                 Вперёд
                             </Button>
