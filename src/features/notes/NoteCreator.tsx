@@ -22,6 +22,12 @@ import {
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
     ArrowUp,
     Loader2,
     Paperclip,
@@ -43,7 +49,8 @@ import {
     Square,
     Pause,
     Play,
-    Trash2
+    Trash2,
+    Upload
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -137,7 +144,7 @@ export function NoteCreator() {
     const [isRecordingMode, setIsRecordingMode] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
-    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+    const [audioBlob, setAudioBlob] = useState<Blob | File | null>(null);
     const [recordingTime, setRecordingTime] = useState(0);
 
     // Ссылки для записи аудио
@@ -150,6 +157,9 @@ export function NoteCreator() {
     const audioCtxRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const animationRef = useRef<number | null>(null);
+
+    // Ссылка для инпута выбора файла
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // === Состояние поиска и фильтров ===
     const [searchTerm, setSearchTerm] = useState(DEFAULT_FILTERS.searchTerm);
@@ -177,6 +187,25 @@ export function NoteCreator() {
             notesApi.createFromAudio(title, file),
     });
 
+    // --- Логика ЗАГРУЗКИ (подготовки) аудиофайла ---
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Вместо моментальной отправки - помещаем файл в состояние
+        setAudioBlob(file);
+        setIsRecordingMode(true);
+        setIsRecording(false);
+        setIsPaused(false);
+
+        // Если название пустое, можно сразу подставить имя файла без расширения
+        if (!title.trim()) {
+            setTitle(file.name.replace(/\.[^/.]+$/, ""));
+        }
+
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
     // --- Логика создания текстовой заметки ---
     const handleCreateText = () => {
         if (!content.trim()) return;
@@ -198,18 +227,20 @@ export function NoteCreator() {
         );
     };
 
-    // --- Логика создания аудио заметки ---
+    // --- Логика отправки аудио заметки (микрофон ИЛИ файл) ---
     const handleCreateAudio = () => {
         if (!audioBlob) return;
 
-        // Генерация красивого дефолтного названия, если пользователь не ввел свое
         const finalTitle = title.trim() || `Аудиозаметка от ${format(new Date(), "dd.MM.yyyy, HH:mm", { locale: ru })}`;
 
-        // Создаем File с расширением .webm и MIME-типом audio/webm
-        const audioFile = new File([audioBlob], "recording.webm", {
-            type: 'audio/webm',
-            lastModified: Date.now()
-        });
+        // Если это уже загруженный файл (имеет имя и т.д.), используем его как есть
+        // В противном случае (запись с микрофона) - оборачиваем в новый File .webm
+        const audioFile = audioBlob instanceof File
+            ? audioBlob
+            : new File([audioBlob], "recording.webm", {
+                type: 'audio/webm',
+                lastModified: Date.now()
+            });
 
         createAudioMutation.mutate(
             { title: finalTitle, file: audioFile },
@@ -225,7 +256,6 @@ export function NoteCreator() {
     };
 
     // === ЛОГИКА ЗАПИСИ АУДИО И ВИЗУАЛИЗАЦИИ ===
-
     const formatTime = (seconds: number) => {
         const m = Math.floor(seconds / 60).toString().padStart(2, '0');
         const s = (seconds % 60).toString().padStart(2, '0');
@@ -252,7 +282,6 @@ export function NoteCreator() {
         const step = Math.floor(bufferLength / barCount);
         const barWidth = (canvas.width / barCount) - 2;
 
-        // Рисуем столбцы
         for (let i = 0; i < barCount; i++) {
             let sum = 0;
             for(let j = 0; j < step; j++) {
@@ -260,12 +289,10 @@ export function NoteCreator() {
             }
             const average = sum / step;
 
-            // Нормализация высоты
             const barHeight = (average / 255) * canvas.height;
             const x = i * (barWidth + 2);
             const y = canvas.height - barHeight;
 
-            // Цвет: синий во время записи, серый на паузе
             ctx.fillStyle = mediaRecorderRef.current?.state === 'paused' ? '#a1a1aa' : '#3b82f6';
 
             ctx.beginPath();
@@ -284,7 +311,6 @@ export function NoteCreator() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            // 1. Инициализация MediaRecorder
             const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
@@ -296,10 +322,9 @@ export function NoteCreator() {
             mediaRecorder.onstop = () => {
                 const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                 setAudioBlob(blob);
-                stream.getTracks().forEach(track => track.stop()); // Выключаем микрофон
+                stream.getTracks().forEach(track => track.stop());
             };
 
-            // 2. Инициализация Web Audio API для визуализатора
             const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
             const analyser = audioCtx.createAnalyser();
             analyser.fftSize = 256;
@@ -310,7 +335,6 @@ export function NoteCreator() {
             audioCtxRef.current = audioCtx;
             analyserRef.current = analyser;
 
-            // 3. Запуск записи и анимации
             mediaRecorder.start();
             setIsRecording(true);
             setIsPaused(false);
@@ -333,7 +357,7 @@ export function NoteCreator() {
             mediaRecorderRef.current.pause();
             setIsPaused(true);
             if (timerRef.current) clearInterval(timerRef.current);
-            audioCtxRef.current?.suspend(); // Приостанавливаем контекст, чтобы "заморозить" график
+            audioCtxRef.current?.suspend();
         }
     };
 
@@ -381,7 +405,6 @@ export function NoteCreator() {
         }
     };
 
-    // Очистка при размонтировании
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -402,7 +425,7 @@ export function NoteCreator() {
         }
     };
 
-    // === Debounce поиска ===
+    // === Debounce поиска и логика фильтров ===
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchTerm);
@@ -410,7 +433,6 @@ export function NoteCreator() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // === Проверка активных фильтров ===
     const hasActiveFilters =
         status !== DEFAULT_FILTERS.status ||
         sourceType !== DEFAULT_FILTERS.sourceType ||
@@ -486,18 +508,15 @@ export function NoteCreator() {
     };
 
     const handlePreviousPage = () => {
-        if (data?.hasPreviousPage) {
-            setCurrentPage(prev => prev - 1);
-        }
+        if (data?.hasPreviousPage) setCurrentPage(prev => prev - 1);
     };
 
     const handleNextPage = () => {
-        if (data?.hasNextPage) {
-            setCurrentPage(prev => prev + 1);
-        }
+        if (data?.hasNextPage) setCurrentPage(prev => prev + 1);
     };
 
     const isSemanticSearch = searchMode === 'Semantic' && !!debouncedSearch;
+    const isPendingAny = createTextMutation.isPending || createAudioMutation.isPending;
 
     if (isError) {
         return (
@@ -517,10 +536,17 @@ export function NoteCreator() {
         );
     }
 
-    const isPendingAny = createTextMutation.isPending || createAudioMutation.isPending;
-
     return (
         <div className="flex flex-col h-full bg-white overflow-hidden">
+            {/* Скрытый input для загрузки аудиофайлов с устройства */}
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept=".mp3,.wav,.ogg,.m4a,.flac,.webm,audio/*"
+                onChange={handleFileSelect}
+            />
+
             <ScrollArea className="flex-1">
                 {/* === СЕКЦИЯ СОЗДАНИЯ ЗАМЕТКИ === */}
                 <div className="border-b border-zinc-100 bg-white">
@@ -545,22 +571,27 @@ export function NoteCreator() {
                             {isRecordingMode ? (
                                 <div className="flex flex-col items-center justify-center min-h-[140px] p-6 text-zinc-800">
                                     {audioBlob ? (
-                                        // Показ готового аудио перед отправкой
+                                        // Показ готового аудио или загруженного файла перед отправкой
                                         <div className="flex flex-col items-center gap-4 w-full">
+                                            {audioBlob instanceof File && (
+                                                <div className="text-sm font-medium text-zinc-700 flex items-center gap-2 mb-2 bg-blue-50 px-3 py-1.5 rounded-md border border-blue-100">
+                                                    <FileAudio className="h-4 w-4 text-blue-500" />
+                                                    {audioBlob.name}
+                                                </div>
+                                            )}
                                             <audio
                                                 controls
                                                 src={URL.createObjectURL(audioBlob)}
                                                 className="w-full max-w-md h-10"
                                             />
-                                            <Button variant="ghost" size="sm" onClick={cancelAudio} className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                                                <Trash2 className="h-4 w-4 mr-2" /> Удалить запись
+                                            <Button variant="ghost" size="sm" onClick={cancelAudio} className="text-red-500 hover:text-red-600 hover:bg-red-50 mt-2">
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Удалить {audioBlob instanceof File ? 'файл' : 'запись'}
                                             </Button>
                                         </div>
                                     ) : (
                                         // Процесс записи
                                         <div className="flex flex-col items-center gap-4 w-full">
-
-                                            {/* Визуализатор Canvas */}
                                             <div className={cn(
                                                 "w-full max-w-[280px] h-12 flex justify-center items-end bg-white/50 rounded-lg p-1 border border-zinc-200/50 transition-opacity",
                                                 !isRecording && "opacity-50"
@@ -618,13 +649,36 @@ export function NoteCreator() {
 
                             {/* Toolbar (Скрепка, Микрофон, Отправить) */}
                             <div className="flex justify-between items-center p-3 bg-zinc-100/50 rounded-b-2xl border-t border-zinc-200">
-                                <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-zinc-600 rounded-full h-8 w-8">
-                                        <Paperclip className="h-4 w-4" />
-                                    </Button>
+                                <div className="flex gap-1 items-center">
+
+                                    {/* ВЫПАДАЮЩЕЕ МЕНЮ ДЛЯ СКРЕПКИ */}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                disabled={isPendingAny}
+                                                className="text-zinc-400 hover:text-zinc-600 rounded-full h-8 w-8"
+                                                title="Прикрепить файл"
+                                            >
+                                                <Paperclip className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="start" className="w-48">
+                                            <DropdownMenuItem
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="cursor-pointer gap-2"
+                                            >
+                                                <Upload className="h-4 w-4 text-blue-500" />
+                                                <span className="text-xs">Загрузить аудиофайл</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
                                     <Button
                                         variant={isRecordingMode ? "secondary" : "ghost"}
                                         size="icon"
+                                        disabled={isPendingAny}
                                         onClick={() => {
                                             if (isRecordingMode) {
                                                 cancelAudio();
