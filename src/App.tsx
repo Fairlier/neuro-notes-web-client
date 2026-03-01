@@ -9,7 +9,6 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import NoteWorkspace from "@/pages/dashboard/NoteWorkspace";
 import GlobalChatPage from "@/pages/chat/GlobalChatPage";
-import SearchPage from "@/pages/search/SearchPage";
 
 function App() {
     return (
@@ -33,9 +32,6 @@ function App() {
                         {/* Заметки */}
                         <Route path="/notes/new" element={<NoteWorkspace />} />
                         <Route path="/notes/:id" element={<NoteWorkspace />} />
-
-                        {/* Поиск */}
-                        <Route path="/search" element={<SearchPage />} />
 
                         {/* Чат */}
                         <Route path="/chat" element={<GlobalChatPage />} />
