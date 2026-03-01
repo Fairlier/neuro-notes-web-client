@@ -38,7 +38,8 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
 type ViewMode = 'raw' | 'structured' | 'summary';
-type SidebarView = 'info' | 'chat';
+// Добавляем состояние 'audio' в тип
+type SidebarView = 'info' | 'chat' | 'audio';
 
 // --- Вспомогательные компоненты ---
 
@@ -241,6 +242,65 @@ const NoteChatPanel = ({ noteId }: { noteId: string }) => {
     );
 };
 
+// --- КОМПОНЕНТ АУДИОПЛЕЕРА ---
+const AudioPlayer = ({ noteId }: { noteId: string }) => {
+    const [audioUrl, setAudioUrl] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+        let url = "";
+
+        const fetchAudio = async () => {
+            try {
+                const response = await notesApi.getSourceFile(noteId, false);
+                if (isMounted && response.blob) {
+                    url = URL.createObjectURL(response.blob);
+                    setAudioUrl(url);
+                }
+            } catch (err) {
+                console.error("Ошибка загрузки аудиофайла:", err);
+                if (isMounted) setError(true);
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        };
+
+        fetchAudio();
+
+        return () => {
+            isMounted = false;
+            if (url) {
+                URL.revokeObjectURL(url);
+            }
+        };
+    }, [noteId]);
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center gap-2 text-xs text-zinc-500 py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Загрузка аудио...
+            </div>
+        );
+    }
+
+    if (error || !audioUrl) {
+        return (
+            <div className="text-xs text-red-500 py-2">
+                Не удалось загрузить аудиофайл
+            </div>
+        );
+    }
+
+    return (
+        <audio controls className="w-full h-8 mt-1" src={audioUrl}>
+            Ваш браузер не поддерживает элемент <code>audio</code>.
+        </audio>
+    );
+};
+
 // --- ГЛАВНЫЙ КОМПОНЕНТ ---
 export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
@@ -254,20 +314,24 @@ export default function NoteWorkspace() {
     const [sidebarView, setSidebarView] = useState<SidebarView>('info');
 
     const [isEditing, setIsEditing] = useState(false);
+
     const [localContent, setLocalContent] = useState("");
     const [titleInput, setTitleInput] = useState("");
 
-    // Определяем режим создания
     const isCreating = !id || id === 'new';
 
-    // Запрос заметки (только если НЕ создаём)
     const { data: note, isLoading, isError } = useQuery({
         queryKey: ['note', id],
         queryFn: () => notesApi.getById(id!),
         enabled: Boolean(id) && id !== 'new',
     });
 
-    // Мутации
+    const displayContent = note
+        ? (viewMode === 'summary' ? note.summaryText || "" :
+            viewMode === 'structured' ? note.structuredText || "" :
+                note.rawText || "")
+        : "";
+
     const transcribeMutation = useMutation({
         mutationFn: notesApi.transcribe,
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
@@ -303,24 +367,12 @@ export default function NoteWorkspace() {
         }
     });
 
-    // Синхронизация контента
-    useEffect(() => {
-        if (note) {
-            const content = viewMode === 'summary' ? note.summaryText || "" :
-                viewMode === 'structured' ? note.structuredText || "" :
-                    note.rawText || "";
-
-            if (!isEditing) {
-                setLocalContent(content);
-                setTitleInput(note.title || "");
-            }
-        }
-    }, [note, viewMode, isEditing]);
-
-    // Обновляем данные вкладки когда заметка загрузилась
     useEffect(() => {
         if (!isCreating && note && id) {
-            updateCurrentTabNote(id, note.title || "Без названия");
+            const timer = setTimeout(() => {
+                updateCurrentTabNote(id, note.title || "Без названия");
+            }, 0);
+            return () => clearTimeout(timer);
         }
     }, [note, id, isCreating, updateCurrentTabNote]);
 
@@ -336,8 +388,13 @@ export default function NoteWorkspace() {
     };
 
     const toggleEditMode = () => {
-        if (isEditing && note && id) {
-            saveChangesMutation.mutate({ id, title: titleInput, content: localContent, field: viewMode });
+        if (!isEditing) {
+            setLocalContent(displayContent);
+            setTitleInput(note?.title || "");
+        } else {
+            if (note && id) {
+                saveChangesMutation.mutate({ id, title: titleInput, content: localContent, field: viewMode });
+            }
         }
         setIsEditing(!isEditing);
     };
@@ -370,7 +427,7 @@ export default function NoteWorkspace() {
                     />
                 ) : (
                     <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight cursor-default">
-                        {titleInput || "Без названия"}
+                        {note?.title || "Без названия"}
                     </h1>
                 )}
 
@@ -382,9 +439,9 @@ export default function NoteWorkspace() {
                             className="w-full h-full min-h-[60vh] resize-none bg-transparent border-0 focus-visible:ring-0 p-0 text-base leading-relaxed font-mono text-zinc-800"
                             placeholder="Начните писать..."
                         />
-                    ) : localContent ? (
+                    ) : displayContent ? (
                         <div className="prose prose-zinc max-w-none">
-                            <Markdown>{localContent}</Markdown>
+                            <Markdown>{displayContent}</Markdown>
                         </div>
                     ) : (
                         <span className="text-zinc-400 italic">Нет содержимого</span>
@@ -446,7 +503,7 @@ export default function NoteWorkspace() {
             <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 flex flex-col min-w-0 bg-white">
 
-                    {/* Toolbar - только для существующих заметок */}
+                    {/* Toolbar */}
                     {!isCreating && note && (
                         <div className="h-10 border-b border-zinc-100 bg-white flex items-center justify-between px-4 flex-shrink-0 select-none">
                             <div className="flex items-center gap-3">
@@ -456,7 +513,6 @@ export default function NoteWorkspace() {
                                     {note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}
                                 </span>
 
-                                {/* Отображение Категории, если она существует */}
                                 {note.category && (
                                     <>
                                         <Separator orientation="vertical" className="h-3 bg-zinc-200" />
@@ -486,9 +542,11 @@ export default function NoteWorkspace() {
                                         <button
                                             key={mode}
                                             onClick={() => setViewMode(mode)}
+                                            disabled={isEditing}
                                             className={cn(
                                                 "flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all",
-                                                viewMode === mode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900"
+                                                viewMode === mode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900",
+                                                isEditing && "opacity-50 cursor-not-allowed"
                                             )}
                                         >
                                             {mode === 'raw' && <><AlignLeft className="h-3 w-3" /> Raw</>}
@@ -508,8 +566,6 @@ export default function NoteWorkspace() {
                                 >
                                     {isEditing ? <><BookOpen className="h-3.5 w-3.5" /> Preview</> : <><Pencil className="h-3.5 w-3.5" /> Edit</>}
                                 </Button>
-
-                                {/* Кнопка с троеточием удалена отсюда */}
                             </div>
                         </div>
                     )}
@@ -524,7 +580,7 @@ export default function NoteWorkspace() {
                     )}
                 </div>
 
-                {/* Sidebar - только для существующих заметок */}
+                {/* Sidebar */}
                 {!isCreating && note && (
                     <aside className={cn(
                         "bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 overflow-hidden flex flex-col flex-shrink-0",
@@ -549,19 +605,39 @@ export default function NoteWorkspace() {
                                     <MessageSquareText className="h-4 w-4" />
                                 </Button>
                                 {note.sourceType === 'AudioFile' && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn("h-7 w-7", sidebarView === 'audio' ? "text-blue-600 bg-blue-50" : "text-zinc-400")}
+                                        onClick={() => setSidebarView('audio')}
+                                    >
                                         <FileAudio className="h-4 w-4" />
                                     </Button>
                                 )}
                             </div>
                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                {sidebarView === 'chat' ? 'AI Chat' : 'Info'}
+                                {sidebarView === 'chat' ? 'AI Chat' : sidebarView === 'audio' ? 'Audio' : 'Info'}
                             </span>
                         </div>
 
-                        {sidebarView === 'chat' ? (
-                            <NoteChatPanel noteId={note.id} />
-                        ) : (
+                        {sidebarView === 'chat' && <NoteChatPanel noteId={note.id} />}
+
+                        {sidebarView === 'audio' && (
+                            <ScrollArea className="flex-1 p-4">
+                                {note.sourceType === 'AudioFile' && note.hasSourceFile ? (
+                                    <div className="space-y-3">
+                                        <div className="text-xs font-medium text-zinc-900">Воспроизведение аудио</div>
+                                        <AudioPlayer noteId={note.id} />
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-zinc-400 text-xs py-8">
+                                        Аудиофайл недоступен.
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        )}
+
+                        {sidebarView === 'info' && (
                             <ScrollArea className="flex-1 p-4">
                                 <div className="space-y-3">
                                     <div className="text-xs font-medium text-zinc-900">Свойства</div>
@@ -583,7 +659,6 @@ export default function NoteWorkspace() {
 
                                 <Separator className="my-5 bg-zinc-200/50" />
 
-                                {/* Новая секция действий (удаление) перенесена сюда */}
                                 <div className="space-y-3">
                                     <div className="text-xs font-medium text-zinc-900">Действия</div>
                                     <Button
