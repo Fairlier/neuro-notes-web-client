@@ -1,5 +1,5 @@
 // src/features/notes/NoteCreator.tsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notesApi } from "@/api/notes";
 import { useTabs } from "@/features/tabs/TabsContext";
@@ -38,7 +38,12 @@ import {
     AlertCircle,
     FileQuestion,
     ArrowUpDown,
-    CalendarDays
+    CalendarDays,
+    Mic,
+    Square,
+    Pause,
+    Play,
+    Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -122,57 +127,70 @@ const DEFAULT_FILTERS = {
 // --- Главный компонент ---
 export function NoteCreator() {
     const queryClient = useQueryClient();
-
-    // Получаем функцию для открытия заметки в текущей вкладке
     const { openNoteInCurrentTab } = useTabs();
 
-    // === Состояние создания заметки ===
+    // === Состояние создания заметки (Текст) ===
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
 
-    // === Состояние поиска ===
+    // === Состояние создания заметки (Аудио) ===
+    const [isRecordingMode, setIsRecordingMode] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
+    const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+    const [recordingTime, setRecordingTime] = useState(0);
+
+    // Ссылки для записи аудио
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Ссылки для визуализатора звука
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const animationRef = useRef<number | null>(null);
+
+    // === Состояние поиска и фильтров ===
     const [searchTerm, setSearchTerm] = useState(DEFAULT_FILTERS.searchTerm);
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isFiltersOpen, setFiltersOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
-
-    // === Фильтры ===
     const [searchMode, setSearchMode] = useState<SearchMode>(DEFAULT_FILTERS.searchMode);
     const [status, setStatus] = useState<NoteStatus | 'all'>(DEFAULT_FILTERS.status);
     const [sourceType, setSourceType] = useState<NoteSourceType | 'all'>(DEFAULT_FILTERS.sourceType);
     const [category, setCategory] = useState<NoteCategory | 'all'>(DEFAULT_FILTERS.category);
-
-    // === Сортировка ===
     const [sortBy, setSortBy] = useState<NoteSortBy>(DEFAULT_FILTERS.sortBy);
     const [sortDirection, setSortDirection] = useState<SortDirection>(DEFAULT_FILTERS.sortDirection);
-
-    // === Фильтры по датам ===
     const [createdFrom, setCreatedFrom] = useState(DEFAULT_FILTERS.createdFrom);
     const [createdTo, setCreatedTo] = useState(DEFAULT_FILTERS.createdTo);
     const [updatedFrom, setUpdatedFrom] = useState(DEFAULT_FILTERS.updatedFrom);
     const [updatedTo, setUpdatedTo] = useState(DEFAULT_FILTERS.updatedTo);
 
-    // === Мутация создания заметки ===
-    const createMutation = useMutation({
+    // === Мутации ===
+    const createTextMutation = useMutation({
         mutationFn: notesApi.createDirectText,
     });
 
-    const handleCreate = () => {
+    const createAudioMutation = useMutation({
+        mutationFn: ({ title, file }: { title: string; file: File }) =>
+            notesApi.createFromAudio(title, file),
+    });
+
+    // --- Логика создания текстовой заметки ---
+    const handleCreateText = () => {
         if (!content.trim()) return;
 
         const finalTitle = title.trim()
             ? title.trim()
             : content.split('\n')[0].substring(0, 50) || "Новая заметка";
 
-        createMutation.mutate(
+        createTextMutation.mutate(
             { title: finalTitle, content },
             {
                 onSuccess: async (data) => {
                     await queryClient.invalidateQueries({ queryKey: ['notes'] });
-                    // После создания заметки открываем её в текущей вкладке
-                    // Используем finalTitle из замыкания, т.к. API возвращает только id
                     openNoteInCurrentTab(data.id, finalTitle);
-                    // Очищаем форму
                     setTitle("");
                     setContent("");
                 }
@@ -180,10 +198,207 @@ export function NoteCreator() {
         );
     };
 
+    // --- Логика создания аудио заметки ---
+    const handleCreateAudio = () => {
+        if (!audioBlob) return;
+
+        // Генерация красивого дефолтного названия, если пользователь не ввел свое
+        const finalTitle = title.trim() || `Аудиозаметка от ${format(new Date(), "dd.MM.yyyy, HH:mm", { locale: ru })}`;
+
+        // Создаем File с расширением .webm и MIME-типом audio/webm
+        const audioFile = new File([audioBlob], "recording.webm", {
+            type: 'audio/webm',
+            lastModified: Date.now()
+        });
+
+        createAudioMutation.mutate(
+            { title: finalTitle, file: audioFile },
+            {
+                onSuccess: async (data) => {
+                    await queryClient.invalidateQueries({ queryKey: ['notes'] });
+                    openNoteInCurrentTab(data.id, finalTitle);
+                    setTitle("");
+                    cancelAudio();
+                }
+            }
+        );
+    };
+
+    // === ЛОГИКА ЗАПИСИ АУДИО И ВИЗУАЛИЗАЦИИ ===
+
+    const formatTime = (seconds: number) => {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    };
+
+    const drawVisualizer = () => {
+        if (!canvasRef.current || !analyserRef.current) return;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const analyser = analyserRef.current;
+
+        if (!ctx) return;
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        analyser.getByteFrequencyData(dataArray);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const barCount = 40;
+        const step = Math.floor(bufferLength / barCount);
+        const barWidth = (canvas.width / barCount) - 2;
+
+        // Рисуем столбцы
+        for (let i = 0; i < barCount; i++) {
+            let sum = 0;
+            for(let j = 0; j < step; j++) {
+                sum += dataArray[i * step + j];
+            }
+            const average = sum / step;
+
+            // Нормализация высоты
+            const barHeight = (average / 255) * canvas.height;
+            const x = i * (barWidth + 2);
+            const y = canvas.height - barHeight;
+
+            // Цвет: синий во время записи, серый на паузе
+            ctx.fillStyle = mediaRecorderRef.current?.state === 'paused' ? '#a1a1aa' : '#3b82f6';
+
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(x, y, barWidth, barHeight, 2);
+            } else {
+                ctx.fillRect(x, y, barWidth, barHeight);
+            }
+            ctx.fill();
+        }
+
+        animationRef.current = requestAnimationFrame(drawVisualizer);
+    };
+
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // 1. Инициализация MediaRecorder
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                setAudioBlob(blob);
+                stream.getTracks().forEach(track => track.stop()); // Выключаем микрофон
+            };
+
+            // 2. Инициализация Web Audio API для визуализатора
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+
+            const source = audioCtx.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            audioCtxRef.current = audioCtx;
+            analyserRef.current = analyser;
+
+            // 3. Запуск записи и анимации
+            mediaRecorder.start();
+            setIsRecording(true);
+            setIsPaused(false);
+            setRecordingTime(0);
+
+            timerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+            drawVisualizer();
+
+        } catch (err) {
+            console.error("Ошибка доступа к микрофону:", err);
+            alert("Не удалось получить доступ к микрофону. Проверьте разрешения в браузере.");
+        }
+    };
+
+    const pauseRecording = () => {
+        if (mediaRecorderRef.current?.state === 'recording') {
+            mediaRecorderRef.current.pause();
+            setIsPaused(true);
+            if (timerRef.current) clearInterval(timerRef.current);
+            audioCtxRef.current?.suspend(); // Приостанавливаем контекст, чтобы "заморозить" график
+        }
+    };
+
+    const resumeRecording = () => {
+        if (mediaRecorderRef.current?.state === 'paused') {
+            mediaRecorderRef.current.resume();
+            setIsPaused(false);
+            timerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+            audioCtxRef.current?.resume();
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            setIsPaused(false);
+            if (timerRef.current) clearInterval(timerRef.current);
+
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            if (audioCtxRef.current?.state !== 'closed') {
+                audioCtxRef.current?.close().catch(() => {});
+            }
+        }
+    };
+
+    const cancelAudio = () => {
+        setAudioBlob(null);
+        setRecordingTime(0);
+
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+
+        setIsRecording(false);
+        setIsPaused(false);
+        setIsRecordingMode(false);
+
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (animationRef.current) cancelAnimationFrame(animationRef.current);
+        if (audioCtxRef.current?.state !== 'closed') {
+            audioCtxRef.current?.close().catch(() => {});
+        }
+    };
+
+    // Очистка при размонтировании
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            if (audioCtxRef.current?.state !== 'closed') {
+                audioCtxRef.current?.close().catch(() => {});
+            }
+        };
+    }, []);
+
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey && e.currentTarget.tagName === 'TEXTAREA') {
             e.preventDefault();
-            handleCreate();
+            handleCreateText();
         }
     };
 
@@ -207,7 +422,6 @@ export function NoteCreator() {
         sortBy !== DEFAULT_FILTERS.sortBy ||
         sortDirection !== DEFAULT_FILTERS.sortDirection;
 
-    // === Подсчёт активных фильтров ===
     const activeFiltersCount = [
         status !== DEFAULT_FILTERS.status,
         sourceType !== DEFAULT_FILTERS.sourceType,
@@ -216,7 +430,6 @@ export function NoteCreator() {
         updatedFrom || updatedTo,
     ].filter(Boolean).length;
 
-    // Параметры запроса
     const queryParams: GetNotesParams = {
         searchTerm: debouncedSearch || undefined,
         searchMode: searchMode,
@@ -233,18 +446,15 @@ export function NoteCreator() {
         pageSize: 20,
     };
 
-    // Запрос заметок
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['notes', 'search', queryParams],
         queryFn: () => notesApi.getAll(queryParams),
     });
 
-    // Обработчик клика по карточке — открывает заметку в текущей вкладке
     const handleNoteClick = (noteId: string, noteTitle: string) => {
         openNoteInCurrentTab(noteId, noteTitle || "Без названия");
     };
 
-    // === Обработчики изменений ===
     const handleSearchModeChange = () => {
         setSearchMode(prev => prev === 'Semantic' ? 'Title' : 'Semantic');
         setCurrentPage(1);
@@ -260,7 +470,6 @@ export function NoteCreator() {
         setCurrentPage(1);
     };
 
-    // === Полный сброс фильтров ===
     const resetFilters = () => {
         setSearchTerm(DEFAULT_FILTERS.searchTerm);
         setSearchMode(DEFAULT_FILTERS.searchMode);
@@ -288,10 +497,8 @@ export function NoteCreator() {
         }
     };
 
-    // Семантический поиск отключает сортировку
     const isSemanticSearch = searchMode === 'Semantic' && !!debouncedSearch;
 
-    // Обработка ошибки
     if (isError) {
         return (
             <div className="flex flex-col h-full items-center justify-center p-6 text-center space-y-4">
@@ -310,6 +517,8 @@ export function NoteCreator() {
         );
     }
 
+    const isPendingAny = createTextMutation.isPending || createAudioMutation.isPending;
+
     return (
         <div className="flex flex-col h-full bg-white overflow-hidden">
             <ScrollArea className="flex-1">
@@ -320,42 +529,134 @@ export function NoteCreator() {
                             What would you like to create?
                         </h1>
 
-                        {/* Поле для названия */}
+                        {/* Название */}
                         <div className="relative bg-zinc-100 rounded-2xl border border-zinc-200 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all mb-4">
                             <Input
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Название заметки (необязательно)"
+                                placeholder={isRecordingMode ? "Название аудиозаметки (необязательно)" : "Название заметки (необязательно)"}
                                 className="w-full bg-transparent border-none focus-visible:ring-0 text-lg px-4 py-3 placeholder:text-zinc-400"
                             />
                         </div>
 
-                        {/* Поле для контента */}
+                        {/* Контент или аудио-рекордер */}
                         <div className="relative bg-zinc-100 rounded-2xl border border-zinc-200 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-                            <Textarea
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Напишите заметку или идею..."
-                                className="w-full min-h-[120px] resize-none bg-transparent border-none focus-visible:ring-0 text-lg p-4 placeholder:text-zinc-400"
-                                autoFocus
-                            />
-                            <div className="flex justify-between items-center p-3">
+
+                            {isRecordingMode ? (
+                                <div className="flex flex-col items-center justify-center min-h-[140px] p-6 text-zinc-800">
+                                    {audioBlob ? (
+                                        // Показ готового аудио перед отправкой
+                                        <div className="flex flex-col items-center gap-4 w-full">
+                                            <audio
+                                                controls
+                                                src={URL.createObjectURL(audioBlob)}
+                                                className="w-full max-w-md h-10"
+                                            />
+                                            <Button variant="ghost" size="sm" onClick={cancelAudio} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                                                <Trash2 className="h-4 w-4 mr-2" /> Удалить запись
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        // Процесс записи
+                                        <div className="flex flex-col items-center gap-4 w-full">
+
+                                            {/* Визуализатор Canvas */}
+                                            <div className={cn(
+                                                "w-full max-w-[280px] h-12 flex justify-center items-end bg-white/50 rounded-lg p-1 border border-zinc-200/50 transition-opacity",
+                                                !isRecording && "opacity-50"
+                                            )}>
+                                                <canvas
+                                                    ref={canvasRef}
+                                                    width={280}
+                                                    height={40}
+                                                    className="w-full h-full"
+                                                />
+                                            </div>
+
+                                            <div className={cn(
+                                                "text-3xl font-mono transition-colors tracking-tight",
+                                                isRecording && !isPaused ? "text-red-500" : "text-zinc-600"
+                                            )}>
+                                                {formatTime(recordingTime)}
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                {!isRecording ? (
+                                                    <Button onClick={startRecording} className="bg-red-500 hover:bg-red-600 text-white rounded-full h-14 w-14 shadow-md">
+                                                        <Mic className="h-6 w-6" />
+                                                    </Button>
+                                                ) : (
+                                                    <>
+                                                        {isPaused ? (
+                                                            <Button onClick={resumeRecording} variant="outline" className="rounded-full h-14 w-14 border-zinc-300">
+                                                                <Play className="h-6 w-6 text-zinc-700" />
+                                                            </Button>
+                                                        ) : (
+                                                            <Button onClick={pauseRecording} variant="outline" className="rounded-full h-14 w-14 border-zinc-300">
+                                                                <Pause className="h-6 w-6 text-zinc-700" />
+                                                            </Button>
+                                                        )}
+                                                        <Button onClick={stopRecording} className="bg-zinc-800 hover:bg-zinc-900 text-white rounded-full h-14 w-14 shadow-md">
+                                                            <Square className="h-5 w-5 fill-current" />
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <Textarea
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    placeholder="Напишите заметку или идею..."
+                                    className="w-full min-h-[120px] resize-none bg-transparent border-none focus-visible:ring-0 text-lg p-4 placeholder:text-zinc-400"
+                                    autoFocus
+                                />
+                            )}
+
+                            {/* Toolbar (Скрепка, Микрофон, Отправить) */}
+                            <div className="flex justify-between items-center p-3 bg-zinc-100/50 rounded-b-2xl border-t border-zinc-200">
                                 <div className="flex gap-1">
                                     <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-zinc-600 rounded-full h-8 w-8">
                                         <Paperclip className="h-4 w-4" />
                                     </Button>
+                                    <Button
+                                        variant={isRecordingMode ? "secondary" : "ghost"}
+                                        size="icon"
+                                        onClick={() => {
+                                            if (isRecordingMode) {
+                                                cancelAudio();
+                                            } else {
+                                                setIsRecordingMode(true);
+                                            }
+                                        }}
+                                        className={cn(
+                                            "rounded-full h-8 w-8 transition-colors",
+                                            isRecordingMode ? "text-blue-600 bg-blue-100 hover:bg-blue-200" : "text-zinc-400 hover:text-zinc-600"
+                                        )}
+                                        title="Голосовая заметка"
+                                    >
+                                        <Mic className="h-4 w-4" />
+                                    </Button>
                                 </div>
                                 <Button
-                                    onClick={handleCreate}
-                                    disabled={!content.trim() || createMutation.isPending}
+                                    onClick={isRecordingMode ? handleCreateAudio : handleCreateText}
+                                    disabled={
+                                        isRecordingMode
+                                            ? (!audioBlob || isPendingAny)
+                                            : (!content.trim() || isPendingAny)
+                                    }
                                     size="icon"
                                     className={cn(
                                         "rounded-xl transition-all",
-                                        content.trim() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-zinc-300'
+                                        (isRecordingMode ? audioBlob : content.trim())
+                                            ? 'bg-blue-600 hover:bg-blue-700 shadow-md'
+                                            : 'bg-zinc-300'
                                     )}
                                 >
-                                    {createMutation.isPending ? (
+                                    {isPendingAny ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                         <ArrowUp className="h-5 w-5" />
@@ -369,7 +670,6 @@ export function NoteCreator() {
                 {/* === СЕКЦИЯ ПОИСКА === */}
                 <div className="border-b border-zinc-100 bg-white">
                     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6">
-                        {/* Заголовок поиска */}
                         <div className="flex items-center gap-3 mb-4">
                             <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
                                 <Search className="h-5 w-5" />
@@ -380,7 +680,6 @@ export function NoteCreator() {
                             </div>
                         </div>
 
-                        {/* Поисковая строка */}
                         <div className="relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
                             <Input
@@ -394,7 +693,6 @@ export function NoteCreator() {
                                 className="w-full h-12 pl-12 pr-32 text-base bg-zinc-50 border-zinc-200 rounded-xl focus-visible:ring-blue-500"
                             />
 
-                            {/* Переключатель режима */}
                             <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
                                 <Button
                                     variant="ghost"
@@ -427,7 +725,6 @@ export function NoteCreator() {
                             </div>
                         </div>
 
-                        {/* Фильтры */}
                         <Collapsible open={isFiltersOpen} onOpenChange={setFiltersOpen}>
                             <div className="flex items-center justify-between mt-4">
                                 <CollapsibleTrigger asChild>
@@ -464,14 +761,12 @@ export function NoteCreator() {
                             </div>
 
                             <CollapsibleContent className="mt-4 space-y-4">
-                                {/* === БЛОК 1: Основные фильтры === */}
                                 <div className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
                                     <div className="flex items-center gap-2 mb-3">
                                         <Filter className="h-4 w-4 text-zinc-400" />
                                         <span className="text-xs font-medium text-zinc-700">Фильтры</span>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {/* Статус */}
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Статус</label>
                                             <Select value={status} onValueChange={handleFilterChange(setStatus)}>
@@ -489,7 +784,6 @@ export function NoteCreator() {
                                             </Select>
                                         </div>
 
-                                        {/* Тип источника */}
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Тип</label>
                                             <Select value={sourceType} onValueChange={handleFilterChange(setSourceType)}>
@@ -504,7 +798,6 @@ export function NoteCreator() {
                                             </Select>
                                         </div>
 
-                                        {/* Категория */}
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Категория</label>
                                             <Select value={category} onValueChange={handleFilterChange(setCategory)}>
@@ -526,7 +819,6 @@ export function NoteCreator() {
                                     </div>
                                 </div>
 
-                                {/* === БЛОК 2: Фильтры по датам === */}
                                 <div className="p-4 bg-zinc-50 rounded-xl border border-zinc-100">
                                     <div className="flex items-center gap-2 mb-3">
                                         <CalendarDays className="h-4 w-4 text-zinc-400" />
@@ -534,7 +826,6 @@ export function NoteCreator() {
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {/* Дата создания */}
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Дата создания</label>
                                             <div className="grid grid-cols-2 gap-2">
@@ -559,7 +850,6 @@ export function NoteCreator() {
                                             </div>
                                         </div>
 
-                                        {/* Дата обновления */}
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Дата обновления</label>
                                             <div className="grid grid-cols-2 gap-2">
@@ -586,7 +876,6 @@ export function NoteCreator() {
                                     </div>
                                 </div>
 
-                                {/* === БЛОК 3: Сортировка === */}
                                 <div className={cn(
                                     "p-4 bg-zinc-50 rounded-xl border border-zinc-100 transition-opacity",
                                     isSemanticSearch && "opacity-50"
@@ -604,7 +893,6 @@ export function NoteCreator() {
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
-                                        {/* Поле сортировки */}
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Сортировать по</label>
                                             <Select
@@ -624,7 +912,6 @@ export function NoteCreator() {
                                             </Select>
                                         </div>
 
-                                        {/* Направление сортировки */}
                                         <div className="space-y-1.5">
                                             <label className="text-[10px] font-medium text-zinc-500 uppercase tracking-wide">Направление</label>
                                             <Select
@@ -654,7 +941,6 @@ export function NoteCreator() {
 
                 {/* === РЕЗУЛЬТАТЫ ПОИСКА === */}
                 <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6">
-                    {/* Статистика */}
                     {data && (
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-2 text-sm text-zinc-500">
@@ -680,7 +966,6 @@ export function NoteCreator() {
                         </div>
                     )}
 
-                    {/* Загрузка */}
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4">
                             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -722,7 +1007,6 @@ export function NoteCreator() {
                         </div>
                     )}
 
-                    {/* Пагинация */}
                     {data && data.totalPages > 1 && (
                         <div className="flex justify-center gap-2 mt-8">
                             <Button
