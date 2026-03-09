@@ -1,28 +1,14 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import App from './App.tsx'
-import './index.css'
-import { Toaster } from "@/components/ui/sonner"
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { AppProviders } from '@/app/providers';
+import { AppRouter } from '@/app/router/AppRouter';
 
-// Клиент для кэширования запросов
-const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            retry: 1, // Повторять запрос 1 раз при ошибке
-            refetchOnWindowFocus: false, // Не обновлять при переключении вкладок
-        },
-    },
-})
+import '@/app/styles/index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-        <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-                <App />
-                <Toaster /> {/* Сюда будут прилетать уведомления */}
-            </BrowserRouter>
-        </QueryClientProvider>
-    </React.StrictMode>,
-)
+        <AppProviders>
+            <AppRouter />
+        </AppProviders>
+    </React.StrictMode>
+);

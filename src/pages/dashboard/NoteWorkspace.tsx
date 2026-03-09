@@ -1,320 +1,48 @@
-// src/pages/dashboard/NoteWorkspace.tsx
-import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { notesApi } from "@/api/notes";
-import { chatApi } from "@/api/chat";
-import type { NoteStatus } from "@/types/notes";
-import { useTabs } from "@/features/tabs/TabsContext";
-import { NoteCreator } from "@/features/notes/NoteCreator";
-import {
-    Loader2,
-    Sparkles,
-    FileJson,
-    AlignLeft,
-    PanelRightClose,
-    PanelRightOpen,
-    File,
-    Info,
-    Plus,
-    X,
-    Trash2,
-    Pencil,
-    Mic,
-    BookOpen,
-    FileAudio,
-    MessageSquareText,
-    Send,
-    Bot,
-    User
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
-import Markdown from 'react-markdown';
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import Markdown from 'react-markdown';
+
+import { notesApi, NoteCreator, AudioPlayer, type NoteStatus } from "@/modules/notes";
+import { NoteChatPanel } from "@/modules/chat";
+import { useTabs } from "@/modules/layout";
+
+import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { ScrollArea } from "@/shared/ui/scroll-area";
+import { Separator } from "@/shared/ui/separator";
+import { Textarea } from "@/shared/ui/textarea";
+import {
+    Loader2, Sparkles, FileJson, AlignLeft, PanelRightClose, PanelRightOpen,
+    File, Info, Plus, X, Trash2, Pencil, Mic, BookOpen, FileAudio, MessageSquareText
+} from "lucide-react";
 
 type ViewMode = 'raw' | 'structured' | 'summary';
-// Добавляем состояние 'audio' в тип
 type SidebarView = 'info' | 'chat' | 'audio';
-
-// --- Вспомогательные компоненты ---
 
 const StatusBadge = ({ status }: { status: NoteStatus }) => {
     const styles = {
-        'Pending': 'text-zinc-500 bg-zinc-100',
-        'Failed': 'text-red-600 bg-red-50',
-        'Raw': 'text-orange-600 bg-orange-50',
-        'Structured': 'text-purple-600 bg-purple-50',
-        'Summarized': 'text-green-600 bg-green-50',
-    }[status] || 'text-zinc-500 bg-zinc-100';
+        'Pending': 'text-muted-foreground bg-muted',
+        'Failed': 'text-destructive bg-destructive/10',
+        'Raw': 'text-orange-600 bg-orange-100 dark:bg-orange-900/30 dark:text-orange-400',
+        'Structured': 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400',
+        'Summarized': 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',
+    }[status] || 'text-muted-foreground bg-muted';
 
-    return (
-        <span className={cn("text-[10px] px-2 py-0.5 rounded-sm font-medium border border-transparent select-none", styles)}>
-            {status}
-        </span>
-    );
+    return <span className={cn("text-[10px] px-2 py-0.5 rounded-sm font-medium border border-transparent select-none", styles)}>{status}</span>;
 };
 
-interface ButtonBaseProps {
-    icon: React.ElementType;
-    text: string;
-    onClick: () => void;
-    colorClass: string;
-    isPending: boolean;
-}
-
-const ButtonBase = ({ icon: Icon, text, onClick, colorClass, isPending }: ButtonBaseProps) => (
-    <Button
-        variant="outline"
-        size="sm"
-        onClick={onClick}
-        disabled={isPending}
-        className="h-8 text-xs gap-1.5 mr-1 bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-50 shadow-sm"
-    >
-        {isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-zinc-400" />
-        ) : (
-            <Icon className={cn("h-3.5 w-3.5", colorClass)} />
-        )}
-        {text}
-    </Button>
-);
-
-interface ActionButtonProps {
-    viewMode: ViewMode;
-    sourceType?: string;
-    onTranscribe: () => void;
-    onStructure: () => void;
-    onSummarize: () => void;
-    isPending: boolean;
-}
-
-const ActionButton = ({
-                          viewMode,
-                          sourceType,
-                          onTranscribe,
-                          onStructure,
-                          onSummarize,
-                          isPending
-                      }: ActionButtonProps) => {
-    if (viewMode === 'raw' && sourceType === 'AudioFile') {
-        return <ButtonBase icon={Mic} text="Transcribe" onClick={onTranscribe} colorClass="text-blue-500" isPending={isPending} />;
-    }
-    if (viewMode === 'structured') {
-        return <ButtonBase icon={FileJson} text="Structure" onClick={onStructure} colorClass="text-purple-500" isPending={isPending} />;
-    }
-    if (viewMode === 'summary') {
-        return <ButtonBase icon={Sparkles} text="Summarize" onClick={onSummarize} colorClass="text-indigo-500" isPending={isPending} />;
-    }
-    return null;
-};
-
-// --- КОМПОНЕНТ ЧАТА ДЛЯ БОКОВОЙ ПАНЕЛИ ---
-const NoteChatPanel = ({ noteId }: { noteId: string }) => {
-    const [input, setInput] = useState("");
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const queryClient = useQueryClient();
-
-    const { data, isLoading } = useQuery({
-        queryKey: ['chat', noteId],
-        queryFn: () => chatApi.getNoteHistory(noteId),
-    });
-
-    const sendMutation = useMutation({
-        mutationFn: (message: string) => chatApi.sendNoteMessage(noteId, message),
-        onSuccess: async () => {
-            setInput("");
-            await queryClient.invalidateQueries({ queryKey: ['chat', noteId] });
-        }
-    });
-
-    const clearMutation = useMutation({
-        mutationFn: () => chatApi.clearNoteHistory(noteId),
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['chat', noteId] });
-        }
-    });
-
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollIntoView({ behavior: "smooth" });
-        }
-    }, [data?.messages, sendMutation.isPending]);
-
-    const handleSend = () => {
-        if (!input.trim()) return;
-        sendMutation.mutate(input);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
-
-    return (
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-zinc-50/30">
-            <ScrollArea className="flex-1 min-h-0 px-3 py-4">
-                <div className="flex flex-col gap-3">
-                    {isLoading ? (
-                        <div className="flex justify-center py-4">
-                            <Loader2 className="h-5 w-5 animate-spin text-zinc-300" />
-                        </div>
-                    ) : !data?.messages || data.messages.length === 0 ? (
-                        <div className="text-center text-zinc-400 text-xs py-8 px-4 leading-relaxed">
-                            Нет сообщений. Спросите что-нибудь по этой заметке.
-                        </div>
-                    ) : (
-                        data.messages.map((msg) => {
-                            const isUser = msg.role === 'User';
-                            return (
-                                <div key={msg.id} className={cn("flex gap-2 max-w-[95%]", isUser ? "ml-auto flex-row-reverse" : "")}>
-                                    <div className={cn(
-                                        "h-6 w-6 rounded-full flex items-center justify-center shrink-0 border text-[10px]",
-                                        isUser ? "bg-zinc-100 border-zinc-200 text-zinc-500" : "bg-indigo-100 border-indigo-200 text-indigo-600"
-                                    )}>
-                                        {isUser ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
-                                    </div>
-                                    <div className={cn(
-                                        "rounded-lg px-3 py-2 text-xs leading-relaxed shadow-sm break-words overflow-hidden",
-                                        isUser ? "bg-blue-600 text-white" : "bg-white border border-zinc-200 text-zinc-700"
-                                    )}>
-                                        {isUser ? msg.content : (
-                                            <div className="prose prose-xs max-w-none prose-zinc">
-                                                <Markdown>{msg.content || ""}</Markdown>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                    {sendMutation.isPending && (
-                        <div className="flex gap-2">
-                            <div className="h-6 w-6 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0">
-                                <Bot className="h-3 w-3" />
-                            </div>
-                            <div className="bg-white border border-zinc-200 rounded-lg px-3 py-2 shadow-sm">
-                                <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />
-                            </div>
-                        </div>
-                    )}
-                    <div ref={scrollRef} />
-                </div>
-            </ScrollArea>
-
-            <div className="p-3 border-t border-zinc-200 bg-white flex-shrink-0">
-                <div className="relative">
-                    <Textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Вопрос по заметке..."
-                        className="min-h-[40px] max-h-[100px] w-full resize-none pr-8 py-2 text-xs bg-zinc-50 border-zinc-200 focus-visible:ring-indigo-500"
-                    />
-                    <Button
-                        size="icon"
-                        className="absolute bottom-1 right-1 h-6 w-6 bg-indigo-600 hover:bg-indigo-700 text-white"
-                        onClick={handleSend}
-                        disabled={sendMutation.isPending || !input.trim()}
-                    >
-                        <Send className="h-3 w-3" />
-                    </Button>
-                </div>
-                <div className="flex justify-between items-center mt-2">
-                    <span className="text-[9px] text-zinc-400">Shift+Enter для переноса</span>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 px-2 text-[10px] text-zinc-400 hover:text-red-500"
-                        onClick={() => confirm("Очистить чат этой заметки?") && clearMutation.mutate()}
-                    >
-                        <Trash2 className="h-3 w-3 mr-1" /> Очистить
-                    </Button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- КОМПОНЕНТ АУДИОПЛЕЕРА ---
-const AudioPlayer = ({ noteId }: { noteId: string }) => {
-    const [audioUrl, setAudioUrl] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(false);
-
-    useEffect(() => {
-        let isMounted = true;
-        let url = "";
-
-        const fetchAudio = async () => {
-            try {
-                const response = await notesApi.getSourceFile(noteId, false);
-                if (isMounted && response.blob) {
-                    url = URL.createObjectURL(response.blob);
-                    setAudioUrl(url);
-                }
-            } catch (err) {
-                console.error("Ошибка загрузки аудиофайла:", err);
-                if (isMounted) setError(true);
-            } finally {
-                if (isMounted) setIsLoading(false);
-            }
-        };
-
-        fetchAudio();
-
-        return () => {
-            isMounted = false;
-            if (url) {
-                URL.revokeObjectURL(url);
-            }
-        };
-    }, [noteId]);
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center gap-2 text-xs text-zinc-500 py-2">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Загрузка аудио...
-            </div>
-        );
-    }
-
-    if (error || !audioUrl) {
-        return (
-            <div className="text-xs text-red-500 py-2">
-                Не удалось загрузить аудиофайл
-            </div>
-        );
-    }
-
-    return (
-        <audio controls className="w-full h-8 mt-1" src={audioUrl}>
-            Ваш браузер не поддерживает элемент <code>audio</code>.
-        </audio>
-    );
-};
-
-// --- ГЛАВНЫЙ КОМПОНЕНТ ---
 export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
-
-    const { tabs, activeTabUid, setActiveTabUid, createNewTab, closeTab, updateCurrentTabNote } = useTabs();
+    const { tabs, activeTabId, setActiveTab, createNewTab, closeTab, openNoteInCurrentTab } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
     const [isRightSidebarOpen, setRightSidebarOpen] = useState(true);
     const [sidebarView, setSidebarView] = useState<SidebarView>('info');
-
     const [isEditing, setIsEditing] = useState(false);
-
     const [localContent, setLocalContent] = useState("");
     const [titleInput, setTitleInput] = useState("");
 
@@ -327,35 +55,32 @@ export default function NoteWorkspace() {
     });
 
     const displayContent = note
-        ? (viewMode === 'summary' ? note.summaryText || "" :
-            viewMode === 'structured' ? note.structuredText || "" :
-                note.rawText || "")
+        ? (viewMode === 'summary' ? note.summaryText || "" : viewMode === 'structured' ? note.structuredText || "" : note.rawText || "")
         : "";
 
     const transcribeMutation = useMutation({
         mutationFn: notesApi.transcribe,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
+        onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['note', id] }); }
     });
 
     const structureMutation = useMutation({
         mutationFn: notesApi.structure,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
+        onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['note', id] }); }
     });
 
     const summarizeMutation = useMutation({
         mutationFn: notesApi.summarize,
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['note', id] })
+        onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['note', id] }); }
     });
 
     const saveChangesMutation = useMutation({
         mutationFn: (data: { id: string; title: string; content: string; field: ViewMode }) => {
-            const contentField = data.field === 'raw' ? 'rawText' :
-                data.field === 'structured' ? 'structuredText' : 'summaryText';
+            const contentField = data.field === 'raw' ? 'rawText' : data.field === 'structured' ? 'structuredText' : 'summaryText';
             return notesApi.update(data.id, { title: data.title, [contentField]: data.content });
         },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['note', id] });
-            queryClient.invalidateQueries({ queryKey: ['notes'] });
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['note', id] });
+            await queryClient.invalidateQueries({ queryKey: ['notes'] });
         }
     });
 
@@ -363,23 +88,9 @@ export default function NoteWorkspace() {
         mutationFn: notesApi.delete,
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['notes'] });
-            if (activeTabUid) closeTab(null, activeTabUid);
+            if (activeTabId) closeTab(activeTabId);
         }
     });
-
-    useEffect(() => {
-        if (!isCreating && note && id) {
-            const timer = setTimeout(() => {
-                updateCurrentTabNote(id, note.title || "Без названия");
-            }, 0);
-            return () => clearTimeout(timer);
-        }
-    }, [note, id, isCreating, updateCurrentTabNote]);
-
-    const handleTabClick = (uid: string, url: string) => {
-        setActiveTabUid(uid);
-        navigate(url);
-    };
 
     const handleDelete = () => {
         if (confirm("Вы уверены, что хотите удалить эту заметку?")) {
@@ -387,64 +98,51 @@ export default function NoteWorkspace() {
         }
     };
 
+    useEffect(() => {
+        if (!isCreating && note && id) {
+            openNoteInCurrentTab(id, note.title || "Без названия");
+        }
+    }, [isCreating, note, id, openNoteInCurrentTab]);
+
     const toggleEditMode = () => {
         if (!isEditing) {
             setLocalContent(displayContent);
             setTitleInput(note?.title || "");
-        } else {
-            if (note && id) {
-                saveChangesMutation.mutate({ id, title: titleInput, content: localContent, field: viewMode });
-            }
+        } else if (note && id) {
+            saveChangesMutation.mutate({ id, title: titleInput, content: localContent, field: viewMode });
         }
         setIsEditing(!isEditing);
     };
 
     const renderNoteContent = () => {
-        if (isLoading) {
-            return (
-                <div className="flex h-full items-center justify-center">
-                    <Loader2 className="animate-spin text-zinc-400" />
-                </div>
-            );
-        }
-
-        if (isError || !note) {
-            return (
-                <div className="flex h-full items-center justify-center text-zinc-400">
-                    Заметка не найдена
-                </div>
-            );
-        }
+        if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>;
+        if (isError || !note) return <div className="flex h-full items-center justify-center text-muted-foreground">Заметка не найдена</div>;
 
         return (
             <div className="max-w-4xl mx-auto p-8 lg:p-12 h-full flex flex-col">
                 {isEditing ? (
                     <input
-                        value={titleInput}
-                        onChange={(e) => setTitleInput(e.target.value)}
-                        className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight outline-none bg-transparent border-none w-full p-0 focus:ring-0 placeholder:text-zinc-300"
+                        value={titleInput} onChange={(e) => setTitleInput(e.target.value)}
+                        className="text-3xl font-bold text-foreground mb-8 leading-tight tracking-tight outline-none bg-transparent border-none w-full p-0 focus:ring-0 placeholder:text-muted-foreground"
                         placeholder="Без названия"
                     />
                 ) : (
-                    <h1 className="text-3xl font-bold text-zinc-900 mb-8 leading-tight tracking-tight cursor-default">
+                    <h1 className="text-3xl font-bold text-foreground mb-8 leading-tight tracking-tight cursor-default">
                         {note?.title || "Без названия"}
                     </h1>
                 )}
 
-                <div className={cn("flex-1 outline-none relative", !isEditing && "prose prose-zinc max-w-none text-zinc-800 leading-7")}>
+                <div className={cn("flex-1 outline-none relative text-foreground", !isEditing && "prose prose-sm md:prose-base dark:prose-invert max-w-none leading-7")}>
                     {isEditing ? (
                         <Textarea
-                            value={localContent}
-                            onChange={(e) => setLocalContent(e.target.value)}
-                            className="w-full h-full min-h-[60vh] resize-none bg-transparent border-0 focus-visible:ring-0 p-0 text-base leading-relaxed font-mono text-zinc-800"
+                            value={localContent} onChange={(e) => setLocalContent(e.target.value)}
+                            className="w-full h-full min-h-[60vh] resize-none bg-transparent border-0 focus-visible:ring-0 p-0 text-base leading-relaxed font-mono text-foreground"
                             placeholder="Начните писать..."
                         />
                     ) : displayContent ? (
-                        <div className="prose prose-zinc max-w-none">
-                            <Markdown>{displayContent}</Markdown>
-                        </div>
+                        <Markdown>{displayContent}</Markdown>
                     ) : (
-                        <span className="text-zinc-400 italic">Нет содержимого</span>
+                        <span className="text-muted-foreground italic">Нет содержимого</span>
                     )}
                 </div>
             </div>
@@ -452,224 +150,116 @@ export default function NoteWorkspace() {
     };
 
     return (
-        <div className="flex flex-col h-full w-full overflow-hidden bg-white">
-
-            {/* TAB BAR */}
-            <div className="h-10 bg-zinc-100/80 flex items-end justify-between px-2 border-b border-zinc-200 select-none flex-shrink-0 gap-2">
+        <div className="flex flex-col h-full w-full overflow-hidden bg-background text-foreground">
+            {/* ТАБЫ */}
+            <div className="h-10 bg-muted/50 flex items-end justify-between px-2 border-b border-border select-none flex-shrink-0 gap-2">
                 <div className="flex items-end flex-1 overflow-x-auto no-scrollbar">
                     {tabs.map((tab) => {
-                        const isActive = tab.uid === activeTabUid;
+                        const isActive = tab.id === activeTabId;
                         return (
                             <div
-                                key={tab.uid}
-                                onClick={() => handleTabClick(tab.uid, tab.url)}
+                                key={tab.id} onClick={() => setActiveTab(tab.id)}
                                 className={cn(
                                     "group relative flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] cursor-pointer text-xs font-medium border-t border-x rounded-t-md transition-all mr-[-1px]",
-                                    isActive
-                                        ? "bg-white border-zinc-200 text-zinc-800 z-10 shadow-sm"
-                                        : "bg-zinc-100 border-transparent text-zinc-500 hover:bg-zinc-200/50"
+                                    isActive ? "bg-background border-border text-foreground z-10 shadow-sm" : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
                                 )}
                             >
-                                <File className={cn("h-3 w-3 shrink-0", isActive ? "text-blue-500" : "text-zinc-400")} />
+                                <File className={cn("h-3 w-3 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
                                 <span className="truncate flex-1">{tab.title}</span>
-                                <div
-                                    role="button"
-                                    onClick={(e) => closeTab(e, tab.uid)}
-                                    className={cn("opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-zinc-200 transition-opacity", isActive && "opacity-100")}
-                                >
-                                    <X className="h-3 w-3 text-zinc-400 hover:text-zinc-700" />
+                                <div role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className={cn("opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-muted-foreground/20", isActive && "opacity-100")}>
+                                    <X className="h-3 w-3" />
                                 </div>
                             </div>
                         );
                     })}
-
-                    <div
-                        onClick={createNewTab}
-                        className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-md hover:bg-zinc-200 cursor-pointer text-zinc-500 transition-colors"
-                        title="Новая вкладка"
-                    >
+                    <div onClick={createNewTab} className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-md hover:bg-muted cursor-pointer text-muted-foreground transition-colors">
                         <Plus className="h-4 w-4" />
                     </div>
                 </div>
-
-                <div className="pb-1.5 pl-2 border-l border-zinc-200/50">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-zinc-400 hover:text-zinc-700" onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}>
+                <div className="pb-1.5 pl-2 border-l border-border">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}>
                         {isRightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                     </Button>
                 </div>
             </div>
 
-            {/* MAIN AREA */}
+            {/* РАБОЧАЯ ОБЛАСТЬ */}
             <div className="flex-1 flex overflow-hidden">
-                <div className="flex-1 flex flex-col min-w-0 bg-white">
-
-                    {/* Toolbar */}
+                <div className="flex-1 flex flex-col min-w-0 bg-background">
+                    {/* Тулбар открытой заметки */}
                     {!isCreating && note && (
-                        <div className="h-10 border-b border-zinc-100 bg-white flex items-center justify-between px-4 flex-shrink-0 select-none">
+                        <div className="h-10 border-b border-border bg-background flex items-center justify-between px-4 flex-shrink-0 select-none">
                             <div className="flex items-center gap-3">
                                 <StatusBadge status={note.status} />
-                                <Separator orientation="vertical" className="h-3 bg-zinc-200" />
-                                <span className="text-[10px] text-zinc-400 uppercase tracking-wide">
-                                    {note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}
-                                </span>
-
+                                <Separator orientation="vertical" className="h-3 bg-border" />
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{note.sourceType === 'AudioFile' ? 'Audio' : 'Text'}</span>
                                 {note.category && (
-                                    <>
-                                        <Separator orientation="vertical" className="h-3 bg-zinc-200" />
-                                        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">
-                                            {note.category}
-                                        </span>
-                                    </>
+                                    <><Separator orientation="vertical" className="h-3 bg-border" /><span className="text-[10px] text-muted-foreground uppercase tracking-wide">{note.category}</span></>
                                 )}
-
-                                <span className="text-[10px] text-zinc-400 ml-2">
-                                    {format(new Date(note.updatedAt || note.createdAt), "d MMM, HH:mm", { locale: ru })}
-                                </span>
+                                <span className="text-[10px] text-muted-foreground ml-2">{format(new Date(note.updatedAt || note.createdAt), "d MMM, HH:mm", { locale: ru })}</span>
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <ActionButton
-                                    viewMode={viewMode}
-                                    sourceType={note.sourceType}
-                                    onTranscribe={() => transcribeMutation.mutate(note.id)}
-                                    onStructure={() => structureMutation.mutate(note.id)}
-                                    onSummarize={() => summarizeMutation.mutate(note.id)}
-                                    isPending={transcribeMutation.isPending || structureMutation.isPending || summarizeMutation.isPending}
-                                />
+                                {/* Кнопки AI действий */}
+                                {viewMode === 'raw' && note.sourceType === 'AudioFile' && <Button variant="outline" size="sm" onClick={() => transcribeMutation.mutate(note.id)} disabled={transcribeMutation.isPending} className="h-7 text-xs"><Mic className="h-3.5 w-3.5 mr-1" /> Transcribe</Button>}
+                                {viewMode === 'structured' && <Button variant="outline" size="sm" onClick={() => structureMutation.mutate(note.id)} disabled={structureMutation.isPending} className="h-7 text-xs"><FileJson className="h-3.5 w-3.5 mr-1" /> Structure</Button>}
+                                {viewMode === 'summary' && <Button variant="outline" size="sm" onClick={() => summarizeMutation.mutate(note.id)} disabled={summarizeMutation.isPending} className="h-7 text-xs"><Sparkles className="h-3.5 w-3.5 mr-1" /> Summarize</Button>}
 
-                                <div className="flex items-center bg-zinc-100/80 rounded-md p-0.5 border border-zinc-200/50">
+                                <div className="flex items-center bg-muted rounded-md p-0.5 border border-border">
                                     {(['raw', 'structured', 'summary'] as const).map((mode) => (
-                                        <button
-                                            key={mode}
-                                            onClick={() => setViewMode(mode)}
-                                            disabled={isEditing}
-                                            className={cn(
-                                                "flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-[4px] transition-all",
-                                                viewMode === mode ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900",
-                                                isEditing && "opacity-50 cursor-not-allowed"
-                                            )}
-                                        >
+                                        <button key={mode} onClick={() => setViewMode(mode)} disabled={isEditing} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-sm transition-all", viewMode === mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground", isEditing && "opacity-50 cursor-not-allowed")}>
                                             {mode === 'raw' && <><AlignLeft className="h-3 w-3" /> Raw</>}
                                             {mode === 'structured' && <><FileJson className="h-3 w-3" /> Structured</>}
                                             {mode === 'summary' && <><Sparkles className="h-3 w-3" /> Summary</>}
                                         </button>
                                     ))}
                                 </div>
-
-                                <Separator orientation="vertical" className="h-4 mx-1 bg-zinc-200" />
-
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={cn("h-7 px-2 gap-1.5 text-xs font-normal", isEditing ? "text-blue-600 bg-blue-50" : "text-zinc-500")}
-                                    onClick={toggleEditMode}
-                                >
+                                <Separator orientation="vertical" className="h-4 mx-1 bg-border" />
+                                <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-xs font-normal", isEditing ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={toggleEditMode}>
                                     {isEditing ? <><BookOpen className="h-3.5 w-3.5" /> Preview</> : <><Pencil className="h-3.5 w-3.5" /> Edit</>}
                                 </Button>
                             </div>
                         </div>
                     )}
 
-                    {/* КОНТЕНТ */}
-                    {isCreating ? (
-                        <NoteCreator />
-                    ) : (
-                        <ScrollArea className="flex-1">
-                            {renderNoteContent()}
-                        </ScrollArea>
-                    )}
+                    {isCreating ? <NoteCreator /> : <ScrollArea className="flex-1">{renderNoteContent()}</ScrollArea>}
                 </div>
 
-                {/* Sidebar */}
+                {/* БОКОВАЯ ПАНЕЛЬ */}
                 {!isCreating && note && (
-                    <aside className={cn(
-                        "bg-zinc-50/80 border-l border-zinc-200 transition-all duration-300 overflow-hidden flex flex-col flex-shrink-0",
-                        isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0"
-                    )}>
-                        <div className="h-10 border-b border-zinc-200/50 flex items-center justify-between px-3 flex-shrink-0">
+                    <aside className={cn("bg-muted/30 border-l border-border transition-all duration-300 overflow-hidden flex flex-col flex-shrink-0", isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0")}>
+                        <div className="h-10 border-b border-border flex items-center justify-between px-3 flex-shrink-0 bg-background">
                             <div className="flex items-center gap-1">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn("h-7 w-7", sidebarView === 'info' ? "text-zinc-900 bg-zinc-200/50" : "text-zinc-400")}
-                                    onClick={() => setSidebarView('info')}
-                                >
-                                    <Info className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn("h-7 w-7", sidebarView === 'chat' ? "text-purple-600 bg-purple-50" : "text-zinc-400")}
-                                    onClick={() => setSidebarView('chat')}
-                                >
-                                    <MessageSquareText className="h-4 w-4" />
-                                </Button>
+                                <Button variant="ghost" size="icon" className={cn("h-7 w-7", sidebarView === 'info' ? "text-foreground bg-muted" : "text-muted-foreground")} onClick={() => setSidebarView('info')}><Info className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className={cn("h-7 w-7", sidebarView === 'chat' ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={() => setSidebarView('chat')}><MessageSquareText className="h-4 w-4" /></Button>
                                 {note.sourceType === 'AudioFile' && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className={cn("h-7 w-7", sidebarView === 'audio' ? "text-blue-600 bg-blue-50" : "text-zinc-400")}
-                                        onClick={() => setSidebarView('audio')}
-                                    >
-                                        <FileAudio className="h-4 w-4" />
-                                    </Button>
+                                    <Button variant="ghost" size="icon" className={cn("h-7 w-7", sidebarView === 'audio' ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={() => setSidebarView('audio')}><FileAudio className="h-4 w-4" /></Button>
                                 )}
                             </div>
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                {sidebarView === 'chat' ? 'AI Chat' : sidebarView === 'audio' ? 'Audio' : 'Info'}
-                            </span>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{sidebarView === 'chat' ? 'AI Chat' : sidebarView === 'audio' ? 'Audio' : 'Info'}</span>
                         </div>
 
                         {sidebarView === 'chat' && <NoteChatPanel noteId={note.id} />}
-
                         {sidebarView === 'audio' && (
                             <ScrollArea className="flex-1 p-4">
                                 {note.sourceType === 'AudioFile' && note.hasSourceFile ? (
-                                    <div className="space-y-3">
-                                        <div className="text-xs font-medium text-zinc-900">Воспроизведение аудио</div>
-                                        <AudioPlayer noteId={note.id} />
-                                    </div>
-                                ) : (
-                                    <div className="text-center text-zinc-400 text-xs py-8">
-                                        Аудиофайл недоступен.
-                                    </div>
-                                )}
+                                    <div className="space-y-3"><div className="text-xs font-medium">Воспроизведение</div><AudioPlayer noteId={note.id} /></div>
+                                ) : <div className="text-center text-muted-foreground text-xs py-8">Аудиофайл недоступен.</div>}
                             </ScrollArea>
                         )}
-
                         {sidebarView === 'info' && (
                             <ScrollArea className="flex-1 p-4">
                                 <div className="space-y-3">
-                                    <div className="text-xs font-medium text-zinc-900">Свойства</div>
+                                    <div className="text-xs font-medium">Свойства</div>
                                     <div className="space-y-2 text-xs">
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Создано</span>
-                                            <span className="text-zinc-600">{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">Обновлено</span>
-                                            <span className="text-zinc-600">{note.updatedAt ? format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm") : "-"}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-zinc-400">ID</span>
-                                            <span className="text-zinc-400 font-mono text-[10px] truncate max-w-[120px]" title={note.id}>{note.id}</span>
-                                        </div>
+                                        <div className="flex justify-between"><span className="text-muted-foreground">Создано</span><span>{format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}</span></div>
+                                        <div className="flex justify-between"><span className="text-muted-foreground">ID</span><span className="text-muted-foreground font-mono text-[10px] truncate max-w-[120px]">{note.id}</span></div>
                                     </div>
                                 </div>
-
-                                <Separator className="my-5 bg-zinc-200/50" />
-
-                                <div className="space-y-3">
-                                    <div className="text-xs font-medium text-zinc-900">Действия</div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 border-red-100 h-8 text-xs font-normal transition-colors"
-                                        onClick={handleDelete}
-                                    >
-                                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Удалить заметку
-                                    </Button>
-                                </div>
+                                <Separator className="my-5 bg-border" />
+                                <Button variant="outline" size="sm" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 h-8 text-xs font-normal" onClick={handleDelete}>
+                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Удалить заметку
+                                </Button>
                             </ScrollArea>
                         )}
                     </aside>
