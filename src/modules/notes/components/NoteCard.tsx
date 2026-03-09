@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { FileText, FileAudio, Calendar, Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import type { NoteListItemDto, NoteStatus } from "../types/notesTypes";
+import type { NoteListItemDto, NoteStatus } from "@/modules/notes";
 
 interface NoteCardProps {
     note: NoteListItemDto;

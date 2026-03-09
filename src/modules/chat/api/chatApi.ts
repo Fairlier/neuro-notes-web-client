@@ -1,5 +1,5 @@
 import api from '@/shared/api/axios';
-import type { ChatHistoryResponse, SendChatMessageResponse } from '../types/chatTypes';
+import type { ChatHistoryResponse, SendChatMessageResponse } from '@/modules/chat';
 
 export const chatApi = {
     getGlobalHistory: async () => {
