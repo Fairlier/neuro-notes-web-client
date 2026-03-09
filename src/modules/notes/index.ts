@@ -3,8 +3,11 @@ export { useAudioRecorder } from './hooks/useAudioRecorder';
 export { NoteCreator } from './components/NoteCreator';
 export { NoteCard } from './components/NoteCard';
 export { NoteFilters } from './components/NoteFilters';
-export { AudioPlayer } from '../notes/components/AudioPlayer.tsx';
-
+export { AudioPlayer } from './components/AudioPlayer';
+export { NoteToolbar } from './components/NoteToolbar';
+export { NoteEditor } from './components/NoteEditor';
+export { NoteSidebar } from './components/NoteSidebar';
+export type { SidebarView } from './components/NoteSidebar';
 
 export type {
     NoteListItemDto,
