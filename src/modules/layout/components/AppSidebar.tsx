@@ -275,7 +275,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                         <DropdownMenuContent align={isOpen ? "end" : "start"} side={isOpen ? "top" : "right"} sideOffset={8}>
                             <DropdownMenuItem onClick={() => setTheme('light')}>Светлая</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setTheme('dark')}>Темная</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setTheme('ocean')}>Ocean</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>

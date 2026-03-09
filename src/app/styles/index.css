@@ -9,6 +9,7 @@
         --primary: 221.2 83.2% 53.3%;
         --muted: 240 4.8% 95.9%;
         --border: 240 5.9% 90%;
+        --radius: 1rem;
     }
 
     [data-theme="dark"] {
@@ -17,13 +18,6 @@
         --primary: 217.2 91.2% 59.8%;
         --muted: 240 3.7% 15.9%;
         --border: 240 3.7% 15.9%;
-    }
-
-    [data-theme="ocean"] {
-        --background: 220 40% 15%;
-        --foreground: 210 20% 98%;
-        --primary: 199 89% 48%;
-        --muted: 220 30% 20%;
-        --border: 220 20% 25%;
+        --radius: 1rem;
     }
 }

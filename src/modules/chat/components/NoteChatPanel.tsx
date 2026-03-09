@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Bot, Loader2, Trash2 } from "lucide-react";
 
@@ -24,7 +24,8 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
         queryFn: () => chatApi.getNoteHistory(noteId),
     });
 
-    const messages = historyData?.messages || [];
+    const messagesData = historyData?.messages;
+    const messages = useMemo(() => messagesData || [], [messagesData]);
 
     const sendMessageMutation = useMutation({
         mutationFn: (message: string) => chatApi.sendNoteMessage(noteId, message),
