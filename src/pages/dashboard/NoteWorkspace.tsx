@@ -46,6 +46,10 @@ export default function NoteWorkspace() {
     const [localContent, setLocalContent] = useState("");
     const [titleInput, setTitleInput] = useState("");
 
+    // --- Состояния для изменения размера панели ---
+    const [sidebarWidth, setSidebarWidth] = useState(300);
+    const [isResizing, setIsResizing] = useState(false);
+
     const isCreating = !id || id === 'new';
 
     const { data: note, isLoading, isError } = useQuery({
@@ -103,6 +107,37 @@ export default function NoteWorkspace() {
             openNoteInCurrentTab(id, note.title || "Без названия");
         }
     }, [isCreating, note, id, openNoteInCurrentTab]);
+
+    // --- Логика перетаскивания (Resizing) ---
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+            // Вычисляем новую ширину от правого края окна
+            const newWidth = document.body.clientWidth - e.clientX;
+            // Ограничиваем минимальную и максимальную ширину
+            if (newWidth > 250 && newWidth < 800) {
+                setSidebarWidth(newWidth);
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+            // Возвращаем стандартный курсор и выделение текста
+            document.body.classList.remove('select-none', 'cursor-col-resize');
+        };
+
+        if (isResizing) {
+            // Отключаем выделение текста при перетаскивании
+            document.body.classList.add('select-none', 'cursor-col-resize');
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
 
     const toggleEditMode = () => {
         if (!isEditing) {
@@ -177,7 +212,7 @@ export default function NoteWorkspace() {
                     </div>
                 </div>
                 <div className="pb-1.5 pl-2 border-l border-border">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-md" onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}>
                         {isRightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                     </Button>
                 </div>
@@ -201,9 +236,9 @@ export default function NoteWorkspace() {
 
                             <div className="flex items-center gap-2">
                                 {/* Кнопки AI действий */}
-                                {viewMode === 'raw' && note.sourceType === 'AudioFile' && <Button variant="outline" size="sm" onClick={() => transcribeMutation.mutate(note.id)} disabled={transcribeMutation.isPending} className="h-7 text-xs"><Mic className="h-3.5 w-3.5 mr-1" /> Transcribe</Button>}
-                                {viewMode === 'structured' && <Button variant="outline" size="sm" onClick={() => structureMutation.mutate(note.id)} disabled={structureMutation.isPending} className="h-7 text-xs"><FileJson className="h-3.5 w-3.5 mr-1" /> Structure</Button>}
-                                {viewMode === 'summary' && <Button variant="outline" size="sm" onClick={() => summarizeMutation.mutate(note.id)} disabled={summarizeMutation.isPending} className="h-7 text-xs"><Sparkles className="h-3.5 w-3.5 mr-1" /> Summarize</Button>}
+                                {viewMode === 'raw' && note.sourceType === 'AudioFile' && <Button variant="outline" size="sm" onClick={() => transcribeMutation.mutate(note.id)} disabled={transcribeMutation.isPending} className="h-7 text-xs rounded-md"><Mic className="h-3.5 w-3.5 mr-1" /> Transcribe</Button>}
+                                {viewMode === 'structured' && <Button variant="outline" size="sm" onClick={() => structureMutation.mutate(note.id)} disabled={structureMutation.isPending} className="h-7 text-xs rounded-md"><FileJson className="h-3.5 w-3.5 mr-1" /> Structure</Button>}
+                                {viewMode === 'summary' && <Button variant="outline" size="sm" onClick={() => summarizeMutation.mutate(note.id)} disabled={summarizeMutation.isPending} className="h-7 text-xs rounded-md"><Sparkles className="h-3.5 w-3.5 mr-1" /> Summarize</Button>}
 
                                 <div className="flex items-center bg-muted rounded-md p-0.5 border border-border">
                                     {(['raw', 'structured', 'summary'] as const).map((mode) => (
@@ -215,7 +250,7 @@ export default function NoteWorkspace() {
                                     ))}
                                 </div>
                                 <Separator orientation="vertical" className="h-4 mx-1 bg-border" />
-                                <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-xs font-normal", isEditing ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={toggleEditMode}>
+                                <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-xs font-normal rounded-md", isEditing ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={toggleEditMode}>
                                     {isEditing ? <><BookOpen className="h-3.5 w-3.5" /> Preview</> : <><Pencil className="h-3.5 w-3.5" /> Edit</>}
                                 </Button>
                             </div>
@@ -225,15 +260,34 @@ export default function NoteWorkspace() {
                     {isCreating ? <NoteCreator /> : <ScrollArea className="flex-1">{renderNoteContent()}</ScrollArea>}
                 </div>
 
+                {/* ПОЛЗУНОК (Resizer) */}
+                {!isCreating && note && isRightSidebarOpen && (
+                    <div
+                        className="w-1 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary transition-colors z-10 flex-shrink-0 relative group flex items-center justify-center"
+                        onMouseDown={() => setIsResizing(true)}
+                    >
+                        {/* Небольшой визуальный скругленный индикатор ползунка */}
+                        <div className="w-1 h-8 bg-zinc-300 dark:bg-zinc-600 rounded-full group-hover:bg-primary transition-colors" />
+                    </div>
+                )}
+
                 {/* БОКОВАЯ ПАНЕЛЬ */}
                 {!isCreating && note && (
-                    <aside className={cn("bg-muted/30 border-l border-border transition-all duration-300 overflow-hidden flex flex-col flex-shrink-0", isRightSidebarOpen ? "w-[300px] opacity-100" : "w-0 opacity-0")}>
+                    <aside
+                        className={cn(
+                            "bg-muted/30 transition-all overflow-hidden flex flex-col flex-shrink-0",
+                            // Когда мы перетаскиваем ползунок, отключаем анимацию (duration-0), чтобы панель не "отставала" от мыши
+                            isResizing ? "duration-0" : "duration-300",
+                            isRightSidebarOpen ? "opacity-100" : "opacity-0"
+                        )}
+                        style={{ width: isRightSidebarOpen ? sidebarWidth : 0 }}
+                    >
                         <div className="h-10 border-b border-border flex items-center justify-between px-3 flex-shrink-0 bg-background">
                             <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className={cn("h-7 w-7", sidebarView === 'info' ? "text-foreground bg-muted" : "text-muted-foreground")} onClick={() => setSidebarView('info')}><Info className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className={cn("h-7 w-7", sidebarView === 'chat' ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={() => setSidebarView('chat')}><MessageSquareText className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className={cn("h-7 w-7 rounded-md", sidebarView === 'info' ? "text-foreground bg-muted" : "text-muted-foreground")} onClick={() => setSidebarView('info')}><Info className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className={cn("h-7 w-7 rounded-md", sidebarView === 'chat' ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={() => setSidebarView('chat')}><MessageSquareText className="h-4 w-4" /></Button>
                                 {note.sourceType === 'AudioFile' && (
-                                    <Button variant="ghost" size="icon" className={cn("h-7 w-7", sidebarView === 'audio' ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={() => setSidebarView('audio')}><FileAudio className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" className={cn("h-7 w-7 rounded-md", sidebarView === 'audio' ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={() => setSidebarView('audio')}><FileAudio className="h-4 w-4" /></Button>
                                 )}
                             </div>
                             <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{sidebarView === 'chat' ? 'AI Chat' : sidebarView === 'audio' ? 'Audio' : 'Info'}</span>
@@ -257,7 +311,7 @@ export default function NoteWorkspace() {
                                     </div>
                                 </div>
                                 <Separator className="my-5 bg-border" />
-                                <Button variant="outline" size="sm" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 h-8 text-xs font-normal" onClick={handleDelete}>
+                                <Button variant="outline" size="sm" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 h-8 text-xs font-normal rounded-md" onClick={handleDelete}>
                                     <Trash2 className="mr-2 h-3.5 w-3.5" /> Удалить заметку
                                 </Button>
                             </ScrollArea>
