@@ -1,4 +1,4 @@
-import { createContext, useState, useCallback, useMemo, type ReactNode } from "react";
+import { createContext, useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export interface TabData {
@@ -9,6 +9,7 @@ export interface TabData {
 interface TabsContextType {
     tabs: TabData[];
     activeTabId: string | null;
+    lastActiveTabId: string | null;
     openNoteInCurrentTab: (id: string, title: string) => void;
     closeTab: (id: string) => void;
     setActiveTab: (id: string) => void;
@@ -18,15 +19,47 @@ interface TabsContextType {
 // eslint-disable-next-line react-refresh/only-export-components
 export const TabsContext = createContext<TabsContextType | undefined>(undefined);
 
+// Ключи для localStorage
+const TABS_STORAGE_KEY = "neuro_notes_tabs";
+const LAST_ACTIVE_KEY = "neuro_notes_last_active_id";
+
 export function TabsProvider({ children }: { children: ReactNode }) {
     const navigate = useNavigate();
     const location = useLocation();
-    const [tabs, setTabs] = useState<TabData[]>([]);
+
+    // 1. Инициализируем состояние из localStorage (если оно там есть)
+    const [tabs, setTabs] = useState<TabData[]>(() => {
+        const savedTabs = localStorage.getItem(TABS_STORAGE_KEY);
+        return savedTabs ? JSON.parse(savedTabs) : [];
+    });
+
+    const [lastActiveTabId, setLastActiveTabId] = useState<string | null>(() => {
+        return localStorage.getItem(LAST_ACTIVE_KEY);
+    });
+
+    // 2. Эффект для сохранения вкладок при их изменении
+    useEffect(() => {
+        localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs));
+    }, [tabs]);
+
+    // 3. Эффект для сохранения последнего активного ID
+    useEffect(() => {
+        if (lastActiveTabId) {
+            localStorage.setItem(LAST_ACTIVE_KEY, lastActiveTabId);
+        } else {
+            localStorage.removeItem(LAST_ACTIVE_KEY);
+        }
+    }, [lastActiveTabId]);
 
     const activeTabId = useMemo(() => {
         const match = location.pathname.match(/^\/notes\/([^/]+)/);
         return match ? match[1] : null;
     }, [location.pathname]);
+
+    // Синхронизация последнего активного ID во время рендера (без useEffect для ESLint)
+    if (activeTabId && activeTabId !== 'new' && activeTabId !== lastActiveTabId) {
+        setLastActiveTabId(activeTabId);
+    }
 
     const openNoteInCurrentTab = useCallback((id: string, title: string) => {
         setTabs(prev => {
@@ -35,7 +68,7 @@ export function TabsProvider({ children }: { children: ReactNode }) {
 
             const currentActiveId = location.pathname.match(/^\/notes\/([^/]+)/)?.[1];
 
-            if (!currentActiveId) {
+            if (!currentActiveId || currentActiveId === 'new') {
                 return [...prev, { id, title }];
             }
             return prev.map(t => t.id === currentActiveId ? { id, title } : t);
@@ -46,35 +79,40 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     const closeTab = useCallback((id: string) => {
         setTabs(prev => {
             const newTabs = prev.filter(t => t.id !== id);
-            const currentActiveId = location.pathname.match(/^\/notes\/([^/]+)/)?.[1];
 
-            if (currentActiveId === id) {
+            if (activeTabId === id) {
                 if (newTabs.length > 0) {
                     navigate(`/notes/${newTabs[newTabs.length - 1].id}`);
                 } else {
-                    navigate('/');
+                    navigate('/notes');
                 }
             }
+
+            if (lastActiveTabId === id) {
+                setLastActiveTabId(null);
+            }
+
             return newTabs;
         });
-    }, [navigate, location.pathname]);
+    }, [navigate, activeTabId, lastActiveTabId]);
 
     const setActiveTab = useCallback((id: string) => {
         navigate(`/notes/${id}`);
     }, [navigate]);
 
     const createNewTab = useCallback(() => {
-        navigate('/');
+        navigate('/notes/new');
     }, [navigate]);
 
     const value = useMemo(() => ({
         tabs,
         activeTabId,
+        lastActiveTabId,
         openNoteInCurrentTab,
         closeTab,
         setActiveTab,
         createNewTab
-    }), [tabs, activeTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab]);
+    }), [tabs, activeTabId, lastActiveTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab]);
 
     return (
         <TabsContext.Provider value={value}>

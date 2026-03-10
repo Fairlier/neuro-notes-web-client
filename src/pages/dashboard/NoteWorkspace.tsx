@@ -21,7 +21,15 @@ type ViewMode = 'raw' | 'structured' | 'summary';
 export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
-    const { tabs, activeTabId, setActiveTab, createNewTab, closeTab, openNoteInCurrentTab } = useTabs();
+    const {
+        tabs,
+        activeTabId,
+        lastActiveTabId,
+        setActiveTab,
+        createNewTab,
+        closeTab,
+        openNoteInCurrentTab
+    } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
     const [isRightSidebarOpen, setRightSidebarOpen] = useState(true);
@@ -34,7 +42,19 @@ export default function NoteWorkspace() {
     const [sidebarWidth, setSidebarWidth] = useState(300);
     const [isResizing, setIsResizing] = useState(false);
 
-    const isCreating = !id || id === 'new';
+    // Логика перенаправления: если зашли в корень /notes, но есть вкладки — восстанавливаем последнюю
+    useEffect(() => {
+        if (!id && tabs.length > 0) {
+            const targetId = lastActiveTabId || tabs[tabs.length - 1].id;
+            // Проверяем, существует ли еще этот таб в списке
+            if (tabs.some(t => t.id === targetId)) {
+                setActiveTab(targetId);
+            }
+        }
+    }, [id, tabs, lastActiveTabId, setActiveTab]);
+
+    // Режим создания активен, если мы явно на /notes/new или в корне без вкладок
+    const isCreating = id === 'new' || (!id && tabs.length === 0);
 
     const { data: note, isLoading, isError } = useQuery({
         queryKey: ['note', id],
@@ -81,32 +101,29 @@ export default function NoteWorkspace() {
         setIsEditing(!isEditing);
     };
 
+    // Синхронизация табов с текущей заметкой
     useEffect(() => {
-        if (!isCreating && note && id) {
+        if (id && id !== 'new' && note) {
             openNoteInCurrentTab(id, note.title || "Без названия");
         }
-    }, [isCreating, note, id, openNoteInCurrentTab]);
+    }, [note, id, openNoteInCurrentTab]);
 
+    // Resize логика
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
             const newWidth = document.body.clientWidth - e.clientX;
-            if (newWidth > 250 && newWidth < 800) {
-                setSidebarWidth(newWidth);
-            }
+            if (newWidth > 250 && newWidth < 800) setSidebarWidth(newWidth);
         };
-
         const handleMouseUp = () => {
             setIsResizing(false);
             document.body.classList.remove('select-none', 'cursor-col-resize');
         };
-
         if (isResizing) {
             document.body.classList.add('select-none', 'cursor-col-resize');
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
         }
-
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
@@ -179,7 +196,6 @@ export default function NoteWorkspace() {
                     )}
                 </div>
 
-                {/* ПОЛЗУНОК (Resizer) */}
                 {!isCreating && note && isRightSidebarOpen && (
                     <div
                         className="w-1 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary transition-colors z-10 flex-shrink-0 relative group flex items-center justify-center"
@@ -189,7 +205,6 @@ export default function NoteWorkspace() {
                     </div>
                 )}
 
-                {/* БОКОВАЯ ПАНЕЛЬ */}
                 {!isCreating && note && (
                     <NoteSidebar
                         note={note}
