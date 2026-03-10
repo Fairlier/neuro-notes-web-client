@@ -5,7 +5,7 @@ import { useAudioRecorder } from "@/modules/notes";
 import { NoteCard } from "./NoteCard";
 import { NoteFilters } from "./NoteFilters";
 import { useTabs } from "@/modules/layout";
-import type { GetNotesParams } from "../types/notesTypes";
+import type { GetNotesParams, NoteListItemDto } from "../types/notesTypes";
 
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
@@ -51,6 +51,17 @@ export const NoteCreator = () => {
     const { data, isLoading } = useQuery({
         queryKey: ['notes', 'search', filters, debouncedSearch],
         queryFn: () => notesApi.getAll({ ...filters, searchTerm: debouncedSearch || undefined }),
+
+        refetchInterval: (query) => {
+            const currentQuery = query as { state?: { data?: { notes?: NoteListItemDto[] } } };
+            const notesList = currentQuery.state?.data?.notes || [];
+
+            const hasProcessingNotes = notesList.some(
+                (note) => note.isProcessing || note.status === 'Pending'
+            );
+
+            return hasProcessingNotes ? 3000 : false;
+        },
     });
 
     const createTextMutation = useMutation({

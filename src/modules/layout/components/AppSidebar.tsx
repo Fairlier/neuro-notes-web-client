@@ -46,7 +46,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    // Инициализируем запрос данных
     const { data, isLoading } = useQuery({
         queryKey: ['notes', 'sidebar', debouncedSearch, sortDirection],
         queryFn: () => notesApi.getAll({
@@ -56,10 +55,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
             searchTerm: debouncedSearch || undefined,
             searchMode: 'Title'
         }),
-        // УМНЫЙ POLLING:
-        // Проверяем полученные данные. Если хотя бы одна заметка обрабатывается (isProcessing)
-        // или висит в ожидании (Pending), запрашиваем обновления каждые 3 секунды (3000ms).
-        // Если все завершились — прекращаем опрос (false).
         refetchInterval: (query) => {
             const notesList = query.state.data?.notes || [];
             const hasProcessingNotes = notesList.some(
