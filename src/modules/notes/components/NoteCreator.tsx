@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { notesApi } from "../api/notesApi";
 import { useAudioRecorder } from "@/modules/notes";
 import { NoteCard } from "./NoteCard";
@@ -48,18 +48,16 @@ export const NoteCreator = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const { data, isLoading } = useQuery({
+    const { data, isLoading, isFetching } = useQuery({
         queryKey: ['notes', 'search', filters, debouncedSearch],
         queryFn: () => notesApi.getAll({ ...filters, searchTerm: debouncedSearch || undefined }),
-
+        placeholderData: keepPreviousData,
         refetchInterval: (query) => {
             const currentQuery = query as { state?: { data?: { notes?: NoteListItemDto[] } } };
             const notesList = currentQuery.state?.data?.notes || [];
-
             const hasProcessingNotes = notesList.some(
                 (note) => note.isProcessing || note.status === 'Pending'
             );
-
             return hasProcessingNotes ? 3000 : false;
         },
     });
@@ -94,28 +92,23 @@ export const NoteCreator = () => {
 
     const handleCreateText = () => {
         if (!content.trim()) return;
-
         const finalTitle = title.trim()
             ? title.trim()
             : content.split('\n')[0].substring(0, 50) || "Новая заметка";
-
         createTextMutation.mutate({ title: finalTitle, content });
     };
 
     const handleCreateAudio = () => {
         if (!audioBlob) return;
-
         const finalTitle = title.trim()
             ? title.trim()
             : `Аудиозаметка от ${new Date().toLocaleString('ru-RU')}`;
-
         const audioFile = audioBlob instanceof File
             ? audioBlob
             : new File([audioBlob], "recording.webm", {
                 type: 'audio/webm',
                 lastModified: Date.now()
             });
-
         createAudioMutation.mutate({ title: finalTitle, file: audioFile });
     };
 
@@ -131,7 +124,6 @@ export const NoteCreator = () => {
         if (file) {
             setAudioBlob(file);
             setIsRecordingMode(true);
-
             if (!title.trim()) {
                 setTitle(file.name.replace(/\.[^/.]+$/, ""));
             }
@@ -150,7 +142,8 @@ export const NoteCreator = () => {
                 onChange={handleFileSelect}
             />
 
-            <ScrollArea className="flex-1">
+            {/* Добавлено style={{ scrollbarGutter: 'stable' }} для предотвращения горизонтального сдвига */}
+            <ScrollArea className="flex-1" style={{ scrollbarGutter: 'stable' }}>
                 {/* --- СЕКЦИЯ СОЗДАНИЯ --- */}
                 <div className="border-b border-border bg-background">
                     <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8">
@@ -182,7 +175,6 @@ export const NoteCreator = () => {
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center gap-4 w-full">
-                                            {/* Визуализатор звука из хука */}
                                             <div className={cn(
                                                 "w-full max-w-[280px] h-12 flex justify-center items-end bg-background rounded-md p-1 border border-border transition-opacity",
                                                 !isRecording && "opacity-50"
@@ -222,7 +214,6 @@ export const NoteCreator = () => {
                                 />
                             )}
 
-                            {/* Панель инструментов */}
                             <div className="flex justify-between items-center p-3 bg-muted/50 rounded-b-lg border-t border-border">
                                 <div className="flex gap-1 items-center">
                                     <DropdownMenu>
@@ -251,7 +242,7 @@ export const NoteCreator = () => {
                 </div>
 
                 {/* --- СЕКЦИЯ ПОИСКА --- */}
-                <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6">
+                <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 pb-32">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary"><Search className="h-5 w-5" /></div>
                         <div>
@@ -274,27 +265,38 @@ export const NoteCreator = () => {
                         </div>
                     </div>
 
-                    {/* Вынесенный компонент фильтров! */}
                     <Collapsible open={isFiltersOpen} onOpenChange={setFiltersOpen}>
                         <CollapsibleTrigger asChild>
                             <Button variant="ghost" size="sm"><SlidersHorizontal className="mr-2 h-3.5 w-3.5" /> Фильтры <ChevronDown className={cn("ml-2 h-3.5 w-3.5", isFiltersOpen && "rotate-180")} /></Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
-                            <NoteFilters filters={filters} onChange={handleFilterChange} isSemanticSearch={filters.searchMode === 'Semantic' && !!debouncedSearch} />
+                            <NoteFilters
+                                filters={filters}
+                                onChange={handleFilterChange}
+                                isSemanticSearch={filters.searchMode === 'Semantic' && !!debouncedSearch}
+                                onClear={() => setFilters({
+                                    ...DEFAULT_FILTERS,
+                                    searchMode: filters.searchMode
+                                })}
+                            />
                         </CollapsibleContent>
                     </Collapsible>
 
-                    {/* --- РЕЗУЛЬТАТЫ --- */}
-                    <div className="mt-8">
+                    {/* Добавлен контейнер с min-h-[500px] для фиксации высоты результатов */}
+                    <div className="mt-8 min-h-[500px]">
                         {isLoading ? (
-                            <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                            <div className="flex justify-center py-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                         ) : data?.notes.length === 0 ? (
-                            <div className="text-center py-20 text-muted-foreground">
-                                <FileQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p>Заметки не найдены</p>
+                            <div className="text-center py-40 text-muted-foreground">
+                                <FileQuestion className="h-10 w-10 mx-auto mb-4 opacity-50" />
+                                <p className="text-lg">Заметки не найдены</p>
+                                <p className="text-sm opacity-70">Попробуйте изменить параметры фильтрации</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className={cn(
+                                "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity duration-200 content-start",
+                                isFetching && "opacity-50 pointer-events-none"
+                            )}>
                                 {data?.notes.map(note => (
                                     <NoteCard key={note.id} note={note} onClick={() => openNoteInCurrentTab(note.id, note.title)} />
                                 ))}

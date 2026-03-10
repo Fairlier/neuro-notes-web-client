@@ -1,19 +1,42 @@
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import type { GetNotesParams } from "../types/notesTypes";
 
 interface NoteFiltersProps {
     filters: GetNotesParams;
     onChange: <K extends keyof GetNotesParams>(key: K, value: GetNotesParams[K]) => void;
+    onClear: () => void;
     isSemanticSearch: boolean;
 }
 
-export const NoteFilters = ({ filters, onChange, isSemanticSearch }: NoteFiltersProps) => {
+export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: NoteFiltersProps) => {
+    const hasActiveFilters = !!(filters.status || filters.sourceType || filters.category);
+
     return (
         <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border animate-in fade-in duration-200 flex flex-col gap-5">
 
-            {/* Блок Фильтров (Статусы и Категории) */}
+            {/* Шапка с зарезервированным местом под кнопку (h-7) */}
+            <div className="flex items-center justify-between h-7 -mb-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Параметры
+                </span>
+
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClear}
+                    className={cn(
+                        "h-6 px-2 text-[10px] text-muted-foreground hover:text-foreground hover:bg-background/50 rounded-md transition-all duration-200",
+                        !hasActiveFilters && "opacity-0 pointer-events-none"
+                    )}
+                >
+                    <X className="h-3 w-3 mr-1" /> Сбросить
+                </Button>
+            </div>
+
+            {/* Блок Фильтров [cite: 465, 475] */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Статус</label>
@@ -24,7 +47,6 @@ export const NoteFilters = ({ filters, onChange, isSemanticSearch }: NoteFilters
                         <SelectTrigger className="h-9 text-xs bg-background">
                             <SelectValue placeholder="Все" />
                         </SelectTrigger>
-                        {/* ДОБАВЛЕН bg-background и shadow-md */}
                         <SelectContent className="bg-background shadow-md">
                             <SelectItem value="all">Все статусы</SelectItem>
                             <SelectItem value="Pending">Pending</SelectItem>
@@ -45,7 +67,6 @@ export const NoteFilters = ({ filters, onChange, isSemanticSearch }: NoteFilters
                         <SelectTrigger className="h-9 text-xs bg-background">
                             <SelectValue placeholder="Все" />
                         </SelectTrigger>
-                        {/* ДОБАВЛЕН bg-background и shadow-md */}
                         <SelectContent className="bg-background shadow-md">
                             <SelectItem value="all">Все типы</SelectItem>
                             <SelectItem value="DirectText">Текст</SelectItem>
@@ -63,7 +84,6 @@ export const NoteFilters = ({ filters, onChange, isSemanticSearch }: NoteFilters
                         <SelectTrigger className="h-9 text-xs bg-background">
                             <SelectValue placeholder="Все" />
                         </SelectTrigger>
-                        {/* ДОБАВЛЕН bg-background и shadow-md */}
                         <SelectContent className="bg-background shadow-md">
                             <SelectItem value="all">Все категории</SelectItem>
                             <SelectItem value="Work">Работа</SelectItem>
@@ -74,10 +94,9 @@ export const NoteFilters = ({ filters, onChange, isSemanticSearch }: NoteFilters
                 </div>
             </div>
 
-            {/* Внутренний разделитель */}
             <div className="h-px bg-border w-full" />
 
-            {/* Блок Сортировки */}
+            {/* Блок Сортировки [cite: 481, 493] */}
             <div className={cn(
                 "flex flex-col gap-3 transition-opacity",
                 isSemanticSearch && "opacity-50"
@@ -102,7 +121,6 @@ export const NoteFilters = ({ filters, onChange, isSemanticSearch }: NoteFilters
                         <SelectTrigger className="h-9 text-xs bg-background">
                             <SelectValue />
                         </SelectTrigger>
-                        {/* ДОБАВЛЕН bg-background и shadow-md */}
                         <SelectContent className="bg-background shadow-md">
                             <SelectItem value="CreatedAt">Дате создания</SelectItem>
                             <SelectItem value="UpdatedAt">Дате обновления</SelectItem>
@@ -117,7 +135,6 @@ export const NoteFilters = ({ filters, onChange, isSemanticSearch }: NoteFilters
                         <SelectTrigger className="h-9 text-xs bg-background">
                             <SelectValue />
                         </SelectTrigger>
-                        {/* ДОБАВЛЕН bg-background и shadow-md */}
                         <SelectContent className="bg-background shadow-md">
                             <SelectItem value="Descending">По убыванию</SelectItem>
                             <SelectItem value="Ascending">По возрастанию</SelectItem>
