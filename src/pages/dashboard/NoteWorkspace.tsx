@@ -28,7 +28,7 @@ export default function NoteWorkspace() {
     } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
-    const [isRightSidebarOpen, setRightSidebarOpen] = useState(true);
+    const [isRightSidebarOpen, setRightSidebarOpen] = useState(false);
     const [sidebarView, setSidebarView] = useState<SidebarView>('info');
 
     const [isEditing, setIsEditing] = useState(false);
@@ -114,21 +114,37 @@ export default function NoteWorkspace() {
         setIsEditing(!isEditing);
     };
 
+    const MIN_SIDEBAR_WIDTH = 300;
+
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
-            const newWidth = document.body.clientWidth - e.clientX;
-            if (newWidth > 200 && newWidth < 600) setSidebarWidth(newWidth);
+
+            const totalWidth = document.body.clientWidth;
+            const newWidth = totalWidth - e.clientX;
+
+            const maxWidth = totalWidth / 2;
+
+            if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) {
+                setSidebarWidth(newWidth);
+            } else if (newWidth < MIN_SIDEBAR_WIDTH) {
+                setSidebarWidth(MIN_SIDEBAR_WIDTH);
+            } else if (newWidth > maxWidth) {
+                setSidebarWidth(maxWidth);
+            }
         };
+
         const handleMouseUp = () => {
             setIsResizing(false);
             document.body.classList.remove('select-none', 'cursor-col-resize');
         };
+
         if (isResizing) {
             document.body.classList.add('select-none', 'cursor-col-resize');
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
         }
+
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
