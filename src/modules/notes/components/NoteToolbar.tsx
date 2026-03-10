@@ -4,7 +4,7 @@ import { motion } from "framer-motion"; // Добавляем для анима�
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { cn } from "@/shared/lib/utils";
-import { FileJson, Sparkles, AlignLeft, Pencil, BookOpen, AlertCircle } from "lucide-react";
+import { FileJson, Sparkles, AlignLeft, Pencil, BookOpen, AlertCircle, type LucideIcon } from "lucide-react";
 import { type NoteDetailsDto, type NoteStatus } from "@/modules/notes";
 
 type ViewMode = 'raw' | 'structured' | 'summary' | 'error';
@@ -37,7 +37,7 @@ interface NoteToolbarProps {
 }
 
 export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEditMode }: NoteToolbarProps) => {
-    const availableModes: { id: ViewMode; label: string; icon: any }[] = [];
+    const availableModes: { id: ViewMode; label: string; icon: LucideIcon }[] = [];
 
     if (note.status === 'Failed') {
         availableModes.push({ id: 'error', label: 'Error', icon: AlertCircle });
