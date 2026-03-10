@@ -50,15 +50,20 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
 
     return (
         <div className="h-10 border-b border-border bg-background flex items-center justify-between px-4 flex-shrink-0 select-none">
-            <div className="flex items-center gap-3">
+            {/* ЛЕВАЯ ЧАСТЬ: СТАТУС И ДАТА */}
+            <div className="flex items-center gap-2">
                 <StatusBadge status={note.status} />
+
+                {/* Тот самый разделитель */}
+                <Separator orientation="vertical" className="h-4 mx-1 opacity-50" />
+
                 <span className="text-[11px] text-muted-foreground/70 font-normal">
                     {format(new Date(note.updatedAt || note.createdAt), "d MMM yyyy, HH:mm", { locale: ru })}
                 </span>
             </div>
 
+            {/* ПРАВАЯ ЧАСТЬ: ПЕРЕКЛЮЧАТЕЛЬ И РЕДАКТИРОВАНИЕ */}
             <div className="flex items-center gap-2">
-                {/* SLIDE SWITCH CONTAINER */}
                 <div className="relative flex p-1 bg-muted/50 rounded-lg border border-border/40 h-8 items-center">
                     {availableModes.map((mode) => {
                         const Icon = mode.icon;
@@ -76,7 +81,6 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
                                         : (isError ? "text-red-600/50 hover:text-red-600" : "text-muted-foreground/80 hover:text-foreground")
                                 )}
                             >
-                                {/* ПЛАВАЮЩИЙ ПОЛЗУНОК */}
                                 {isActive && (
                                     <motion.div
                                         layoutId="active-pill"
@@ -88,7 +92,6 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
                                     />
                                 )}
 
-                                {/* ТЕКСТ И ИКОНКА (поверх ползунка) */}
                                 <span className="relative z-10 flex items-center gap-1.5">
                                     <Icon className="h-3.5 w-3.5" />
                                     <span>{mode.label}</span>
