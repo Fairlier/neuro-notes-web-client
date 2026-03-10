@@ -21,6 +21,7 @@ type ViewMode = 'raw' | 'structured' | 'summary';
 export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
+
     const {
         tabs,
         activeTabId,
@@ -42,18 +43,15 @@ export default function NoteWorkspace() {
     const [sidebarWidth, setSidebarWidth] = useState(300);
     const [isResizing, setIsResizing] = useState(false);
 
-    // Логика перенаправления: если зашли в корень /notes, но есть вкладки — восстанавливаем последнюю
     useEffect(() => {
         if (!id && tabs.length > 0) {
             const targetId = lastActiveTabId || tabs[tabs.length - 1].id;
-            // Проверяем, существует ли еще этот таб в списке
             if (tabs.some(t => t.id === targetId)) {
                 setActiveTab(targetId);
             }
         }
     }, [id, tabs, lastActiveTabId, setActiveTab]);
 
-    // Режим создания активен, если мы явно на /notes/new или в корне без вкладок
     const isCreating = id === 'new' || (!id && tabs.length === 0);
 
     const { data: note, isLoading, isError } = useQuery({
@@ -61,6 +59,12 @@ export default function NoteWorkspace() {
         queryFn: () => notesApi.getById(id!),
         enabled: Boolean(id) && id !== 'new',
     });
+
+    useEffect(() => {
+        if (id && id !== 'new' && note) {
+            openNoteInCurrentTab(id, note.title || "Без названия");
+        }
+    }, [id, note, openNoteInCurrentTab]);
 
     const displayContent = note
         ? (viewMode === 'summary' ? note.summaryText || "" : viewMode === 'structured' ? note.structuredText || "" : note.rawText || "")
@@ -101,19 +105,11 @@ export default function NoteWorkspace() {
         setIsEditing(!isEditing);
     };
 
-    // Синхронизация табов с текущей заметкой
-    useEffect(() => {
-        if (id && id !== 'new' && note) {
-            openNoteInCurrentTab(id, note.title || "Без названия");
-        }
-    }, [note, id, openNoteInCurrentTab]);
-
-    // Resize логика
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
             const newWidth = document.body.clientWidth - e.clientX;
-            if (newWidth > 250 && newWidth < 800) setSidebarWidth(newWidth);
+            if (newWidth > 200 && newWidth < 600) setSidebarWidth(newWidth);
         };
         const handleMouseUp = () => {
             setIsResizing(false);
@@ -132,39 +128,55 @@ export default function NoteWorkspace() {
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-background text-foreground">
-            {/* ТАБЫ */}
             <div className="h-10 bg-muted/50 flex items-end justify-between px-2 border-b border-border select-none flex-shrink-0 gap-2">
                 <div className="flex items-end flex-1 overflow-x-auto no-scrollbar">
                     {tabs.map((tab) => {
                         const isActive = tab.id === activeTabId;
                         return (
                             <div
-                                key={tab.id} onClick={() => setActiveTab(tab.id)}
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
                                 className={cn(
                                     "group relative flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] cursor-pointer text-xs font-medium border-t border-x rounded-t-lg transition-all mr-[-1px]",
-                                    isActive ? "bg-background border-border text-foreground z-10 shadow-sm" : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                                    isActive
+                                        ? "bg-background border-border text-foreground z-10 shadow-sm"
+                                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
                                 )}
                             >
                                 <File className={cn("h-3 w-3 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
                                 <span className="truncate flex-1">{tab.title}</span>
-                                <div role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className={cn("opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-muted-foreground/20", isActive && "opacity-100")}>
+                                <div
+                                    role="button"
+                                    onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                                    className={cn(
+                                        "opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-muted-foreground/20 transition-opacity",
+                                        isActive && "opacity-100"
+                                    )}
+                                >
                                     <X className="h-3 w-3" />
                                 </div>
                             </div>
                         );
                     })}
-                    <div onClick={createNewTab} className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-lg hover:bg-muted cursor-pointer text-muted-foreground transition-colors">
+                    <div
+                        onClick={createNewTab}
+                        className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-lg hover:bg-muted cursor-pointer text-muted-foreground transition-colors"
+                    >
                         <Plus className="h-4 w-4" />
                     </div>
                 </div>
                 <div className="pb-1.5 pl-2 border-l border-border">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg" onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                        onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}
+                    >
                         {isRightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                     </Button>
                 </div>
             </div>
 
-            {/* РАБОЧАЯ ОБЛАСТЬ */}
             <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 flex flex-col min-w-0 bg-background">
                     {!isCreating && note && (
