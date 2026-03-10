@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -16,20 +16,15 @@ import { Button } from "@/shared/ui/button";
 import { File, Plus, X, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
-type ViewMode = 'raw' | 'structured' | 'summary';
+type ViewMode = 'raw' | 'structured' | 'summary' | 'error';
 
 export default function NoteWorkspace() {
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
 
     const {
-        tabs,
-        activeTabId,
-        lastActiveTabId,
-        setActiveTab,
-        createNewTab,
-        closeTab,
-        openNoteInCurrentTab
+        tabs, activeTabId, lastActiveTabId,
+        setActiveTab, createNewTab, closeTab, openNoteInCurrentTab
     } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
@@ -43,37 +38,50 @@ export default function NoteWorkspace() {
     const [sidebarWidth, setSidebarWidth] = useState(300);
     const [isResizing, setIsResizing] = useState(false);
 
-    useEffect(() => {
-        if (!id && tabs.length > 0) {
-            const targetId = lastActiveTabId || tabs[tabs.length - 1].id;
-            if (tabs.some(t => t.id === targetId)) {
-                setActiveTab(targetId);
-            }
-        }
-    }, [id, tabs, lastActiveTabId, setActiveTab]);
-
-    const isCreating = id === 'new' || (!id && tabs.length === 0);
-
     const { data: note, isLoading, isError } = useQuery({
         queryKey: ['note', id],
         queryFn: () => notesApi.getById(id!),
         enabled: Boolean(id) && id !== 'new',
     });
 
-    useEffect(() => {
-        if (id && id !== 'new' && note) {
-            openNoteInCurrentTab(id, note.title || "Без названия");
-        }
-    }, [id, note, openNoteInCurrentTab]);
+    const [initializedNoteId, setInitializedNoteId] = useState<string | null>(null);
 
-    const displayContent = note
-        ? (viewMode === 'summary' ? note.summaryText || "" : viewMode === 'structured' ? note.structuredText || "" : note.rawText || "")
-        : "";
+    if (note && note.id !== initializedNoteId) {
+        setInitializedNoteId(note.id);
+
+        const getInitialMode = (): ViewMode => {
+            if (note.status === 'Failed' || note.errorMessage) return 'error';
+            if (note.structuredText) return 'structured';
+            if (note.summaryText) return 'summary';
+            return 'raw';
+        };
+
+        setViewMode(getInitialMode());
+    }
+
+    const displayContent = useMemo(() => {
+        if (!note) return "";
+        switch (viewMode) {
+            case 'summary': return note.summaryText || "";
+            case 'structured': return note.structuredText || "";
+            case 'error': return note.errorMessage || "Ошибка отсутствует";
+            case 'raw': return note.rawText || "";
+            default: return "";
+        }
+    }, [note, viewMode]);
+
+    const [prevViewMode, setPrevViewMode] = useState<ViewMode>(viewMode);
+    if (viewMode !== prevViewMode) {
+        setPrevViewMode(viewMode);
+        if (isEditing) {
+            setLocalContent(displayContent);
+        }
+    }
 
     const saveChangesMutation = useMutation({
         mutationFn: (data: { id: string; title: string; content: string; field: ViewMode }) => {
-            const contentField = data.field === 'raw' ? 'rawText' : data.field === 'structured' ? 'structuredText' : 'summaryText';
-            return notesApi.update(data.id, { title: data.title, [contentField]: data.content });
+            const field = data.field === 'raw' ? 'rawText' : data.field === 'structured' ? 'structuredText' : 'summaryText';
+            return notesApi.update(data.id, { title: data.title, [field]: data.content });
         },
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['note', id] });
@@ -81,26 +89,27 @@ export default function NoteWorkspace() {
         }
     });
 
-    const deleteMutation = useMutation({
-        mutationFn: notesApi.delete,
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ['notes'] });
-            if (activeTabId) closeTab(activeTabId);
+    useEffect(() => {
+        if (!id && tabs.length > 0) {
+            const targetId = lastActiveTabId || tabs[tabs.length - 1].id;
+            if (tabs.some(t => t.id === targetId)) setActiveTab(targetId);
         }
-    });
+    }, [id, tabs, lastActiveTabId, setActiveTab]);
 
-    const handleDelete = () => {
-        if (confirm("Вы уверены, что хотите удалить эту заметку?")) {
-            deleteMutation.mutate(id!);
+    useEffect(() => {
+        if (id && id !== 'new' && note) {
+            openNoteInCurrentTab(id, note.title || "Без названия");
         }
-    };
+    }, [id, note?.title, openNoteInCurrentTab]);
+
+    const isCreating = id === 'new' || (!id && tabs.length === 0);
 
     const toggleEditMode = () => {
-        if (!isEditing) {
-            setLocalContent(displayContent);
-            setTitleInput(note?.title || "");
-        } else if (note && id) {
+        if (isEditing && note && id && viewMode !== 'error') {
             saveChangesMutation.mutate({ id, title: titleInput, content: localContent, field: viewMode });
+        } else if (!isEditing) {
+            setTitleInput(note?.title || "");
+            setLocalContent(displayContent);
         }
         setIsEditing(!isEditing);
     };
@@ -128,50 +137,32 @@ export default function NoteWorkspace() {
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-background text-foreground">
+            {/* ШАПКА ТАБОВ */}
             <div className="h-10 bg-muted/50 flex items-end justify-between px-2 border-b border-border select-none flex-shrink-0 gap-2">
                 <div className="flex items-end flex-1 overflow-x-auto no-scrollbar">
                     {tabs.map((tab) => {
                         const isActive = tab.id === activeTabId;
                         return (
-                            <div
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={cn(
-                                    "group relative flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] cursor-pointer text-xs font-medium border-t border-x rounded-t-lg transition-all mr-[-1px]",
-                                    isActive
-                                        ? "bg-background border-border text-foreground z-10 shadow-sm"
-                                        : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
-                                )}
+                            <div key={tab.id} onClick={() => setActiveTab(tab.id)}
+                                 className={cn(
+                                     "group relative flex items-center gap-2 px-3 py-2 min-w-[120px] max-w-[200px] cursor-pointer text-xs font-medium border-t border-x rounded-t-lg transition-all mr-[-1px]",
+                                     isActive ? "bg-background border-border text-foreground z-10 shadow-sm" : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
+                                 )}
                             >
                                 <File className={cn("h-3 w-3 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
                                 <span className="truncate flex-1">{tab.title}</span>
-                                <div
-                                    role="button"
-                                    onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                                    className={cn(
-                                        "opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-muted-foreground/20 transition-opacity",
-                                        isActive && "opacity-100"
-                                    )}
-                                >
+                                <div role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className={cn("opacity-0 group-hover:opacity-100 p-0.5 rounded-md hover:bg-muted-foreground/20 transition-opacity", isActive && "opacity-100")}>
                                     <X className="h-3 w-3" />
                                 </div>
                             </div>
                         );
                     })}
-                    <div
-                        onClick={createNewTab}
-                        className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-lg hover:bg-muted cursor-pointer text-muted-foreground transition-colors"
-                    >
+                    <div onClick={createNewTab} className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-lg hover:bg-muted cursor-pointer text-muted-foreground transition-colors">
                         <Plus className="h-4 w-4" />
                     </div>
                 </div>
                 <div className="pb-1.5 pl-2 border-l border-border">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
-                        onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}
-                    >
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg" onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}>
                         {isRightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
                     </Button>
                 </div>
@@ -189,9 +180,7 @@ export default function NoteWorkspace() {
                         />
                     )}
 
-                    {isCreating ? (
-                        <NoteCreator />
-                    ) : (
+                    {isCreating ? <NoteCreator /> : (
                         <ScrollArea className="flex-1">
                             <NoteEditor
                                 note={note}
@@ -209,24 +198,13 @@ export default function NoteWorkspace() {
                 </div>
 
                 {!isCreating && note && isRightSidebarOpen && (
-                    <div
-                        className="w-1 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary transition-colors z-10 flex-shrink-0 relative group flex items-center justify-center"
-                        onMouseDown={() => setIsResizing(true)}
-                    >
+                    <div className="w-1 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary transition-colors z-10 flex-shrink-0 relative group flex items-center justify-center" onMouseDown={() => setIsResizing(true)}>
                         <div className="w-1 h-8 bg-zinc-300 dark:bg-zinc-600 rounded-full group-hover:bg-primary transition-colors" />
                     </div>
                 )}
 
                 {!isCreating && note && (
-                    <NoteSidebar
-                        note={note}
-                        sidebarView={sidebarView}
-                        setSidebarView={setSidebarView}
-                        isRightSidebarOpen={isRightSidebarOpen}
-                        sidebarWidth={sidebarWidth}
-                        isResizing={isResizing}
-                        handleDelete={handleDelete}
-                    />
+                    <NoteSidebar note={note} sidebarView={sidebarView} setSidebarView={setSidebarView} isRightSidebarOpen={isRightSidebarOpen} sidebarWidth={sidebarWidth} isResizing={isResizing} handleDelete={() => {}} />
                 )}
             </div>
         </div>

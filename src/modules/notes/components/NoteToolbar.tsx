@@ -4,8 +4,10 @@ import { ru } from "date-fns/locale";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { cn } from "@/shared/lib/utils";
-import { Mic, FileJson, Sparkles, AlignLeft, Pencil, BookOpen } from "lucide-react";
+import { Mic, FileJson, Sparkles, AlignLeft, Pencil, BookOpen, AlertCircle } from "lucide-react";
 import { notesApi, type NoteDetailsDto, type NoteStatus } from "@/modules/notes";
+
+type ViewMode = 'raw' | 'structured' | 'summary' | 'error';
 
 const StatusBadge = ({ status }: { status: NoteStatus }) => {
     const styles = {
@@ -21,8 +23,8 @@ const StatusBadge = ({ status }: { status: NoteStatus }) => {
 
 interface NoteToolbarProps {
     note: NoteDetailsDto;
-    viewMode: 'raw' | 'structured' | 'summary';
-    setViewMode: (mode: 'raw' | 'structured' | 'summary') => void;
+    viewMode: ViewMode;
+    setViewMode: (mode: ViewMode) => void;
     isEditing: boolean;
     toggleEditMode: () => void;
 }
@@ -65,6 +67,7 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
             </div>
 
             <div className="flex items-center gap-2">
+                {/* AI Кнопки - активны только в своих режимах */}
                 {viewMode === 'raw' && note.sourceType === 'AudioFile' && (
                     <Button variant="outline" size="sm" onClick={() => transcribeMutation.mutate(note.id)} disabled={transcribeMutation.isPending} className="h-7 text-xs rounded-md">
                         <Mic className="h-3.5 w-3.5 mr-1" /> Transcribe
@@ -81,17 +84,51 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
                     </Button>
                 )}
 
+                {/* ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ */}
                 <div className="flex items-center bg-muted rounded-md p-0.5 border border-border">
+                    {/* ERROR - САМАЯ ЛЕВАЯ, если есть ошибка */}
+                    {note.status === 'Failed' && (
+                        <button
+                            onClick={() => setViewMode('error')}
+                            className={cn(
+                                "flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-sm transition-all mr-0.5",
+                                viewMode === 'error' ? "bg-destructive text-destructive-foreground shadow-sm" : "text-destructive hover:bg-destructive/10"
+                            )}
+                        >
+                            <AlertCircle className="h-3 w-3" /> Error
+                        </button>
+                    )}
+
                     {(['raw', 'structured', 'summary'] as const).map((mode) => (
-                        <button key={mode} onClick={() => setViewMode(mode)} disabled={isEditing} className={cn("flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-sm transition-all", viewMode === mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground", isEditing && "opacity-50 cursor-not-allowed")}>
+                        <button
+                            key={mode}
+                            onClick={() => setViewMode(mode)}
+                            className={cn(
+                                "flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-sm transition-all",
+                                viewMode === mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
                             {mode === 'raw' && <><AlignLeft className="h-3 w-3" /> Raw</>}
                             {mode === 'structured' && <><FileJson className="h-3 w-3" /> Structured</>}
                             {mode === 'summary' && <><Sparkles className="h-3 w-3" /> Summary</>}
                         </button>
                     ))}
                 </div>
+
                 <Separator orientation="vertical" className="h-4 mx-1 bg-border" />
-                <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-xs font-normal rounded-md", isEditing ? "text-primary bg-primary/10" : "text-muted-foreground")} onClick={toggleEditMode}>
+
+                {/* Кнопка редактирования - блокируем её только если выбран режим 'error' */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={viewMode === 'error'}
+                    className={cn(
+                        "h-7 px-2 gap-1.5 text-xs font-normal rounded-md",
+                        isEditing ? "text-primary bg-primary/10" : "text-muted-foreground",
+                        viewMode === 'error' && "opacity-50 cursor-not-allowed"
+                    )}
+                    onClick={toggleEditMode}
+                >
                     {isEditing ? <><BookOpen className="h-3.5 w-3.5" /> Preview</> : <><Pencil className="h-3.5 w-3.5" /> Edit</>}
                 </Button>
             </div>

@@ -1,4 +1,4 @@
-import { createContext, useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { createContext, useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export interface TabData {
@@ -35,8 +35,6 @@ export function TabsProvider({ children }: { children: ReactNode }) {
         return localStorage.getItem(LAST_ACTIVE_KEY);
     });
 
-    const prevActiveTabIdRef = useRef<string | null>(null);
-
     useEffect(() => {
         localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabs));
     }, [tabs]);
@@ -51,12 +49,9 @@ export function TabsProvider({ children }: { children: ReactNode }) {
         return match ? match[1] : null;
     }, [location.pathname]);
 
-    useEffect(() => {
-        if (activeTabId && activeTabId !== 'new' && activeTabId !== prevActiveTabIdRef.current) {
-            setLastActiveTabId(activeTabId);
-            prevActiveTabIdRef.current = activeTabId;
-        }
-    }, [activeTabId]);
+    if (activeTabId && activeTabId !== 'new' && activeTabId !== lastActiveTabId) {
+        setLastActiveTabId(activeTabId);
+    }
 
     const openNoteInCurrentTab = useCallback((id: string, title: string) => {
         setTabs(prev => {
