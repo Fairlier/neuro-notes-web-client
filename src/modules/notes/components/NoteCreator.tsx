@@ -13,7 +13,7 @@ import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/shared/ui/collapsible";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/shared/ui/dropdown-menu";
-import { Search, Mic, Paperclip, ArrowUp, Loader2, Play, Pause, Square, Trash2, Upload, SlidersHorizontal, ChevronDown, Sparkles, Type, FileQuestion } from "lucide-react";
+import { Search, Mic, Paperclip, ArrowUp, Loader2, Play, Pause, Square, Trash2, Upload, SlidersHorizontal, ChevronDown, Sparkles, Type, FileQuestion, FileAudio } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
 const DEFAULT_FILTERS: GetNotesParams = {
@@ -55,19 +55,22 @@ export const NoteCreator = () => {
 
     const createTextMutation = useMutation({
         mutationFn: notesApi.createDirectText,
-        onSuccess: (data) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['notes'] });
-            openNoteInCurrentTab(data.id, title || "Новая заметка");
-            setTitle(""); setContent("");
+            openNoteInCurrentTab(data.id, variables.title);
+            setTitle("");
+            setContent("");
         }
     });
 
     const createAudioMutation = useMutation({
         mutationFn: ({ title, file }: { title: string; file: File }) => notesApi.createFromAudio(title, file),
-        onSuccess: (data) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['notes'] });
-            openNoteInCurrentTab(data.id, title || "Аудиозаметка");
-            setTitle(""); cancelAudio(); setIsRecordingMode(false);
+            openNoteInCurrentTab(data.id, variables.title);
+            setTitle("");
+            cancelAudio();
+            setIsRecordingMode(false);
         }
     });
 
@@ -78,14 +81,63 @@ export const NoteCreator = () => {
         setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
     };
 
+    const handleCreateText = () => {
+        if (!content.trim()) return;
+
+        const finalTitle = title.trim()
+            ? title.trim()
+            : content.split('\n')[0].substring(0, 50) || "Новая заметка";
+
+        createTextMutation.mutate({ title: finalTitle, content });
+    };
+
+    const handleCreateAudio = () => {
+        if (!audioBlob) return;
+
+        const finalTitle = title.trim()
+            ? title.trim()
+            : `Аудиозаметка от ${new Date().toLocaleString('ru-RU')}`;
+
+        const audioFile = audioBlob instanceof File
+            ? audioBlob
+            : new File([audioBlob], "recording.webm", {
+                type: 'audio/webm',
+                lastModified: Date.now()
+            });
+
+        createAudioMutation.mutate({ title: finalTitle, file: audioFile });
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey && !isRecordingMode) {
+            e.preventDefault();
+            handleCreateText();
+        }
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setAudioBlob(file);
+            setIsRecordingMode(true);
+
+            if (!title.trim()) {
+                setTitle(file.name.replace(/\.[^/.]+$/, ""));
+            }
+        }
+    };
+
     const isPendingAny = createTextMutation.isPending || createAudioMutation.isPending;
 
     return (
         <div className="flex flex-col h-full bg-background overflow-hidden text-foreground">
-            <input type="file" ref={fileInputRef} className="hidden" accept="audio/*" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) { setAudioBlob(file); setIsRecordingMode(true); }
-            }} />
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="audio/*"
+                onChange={handleFileSelect}
+            />
 
             <ScrollArea className="flex-1">
                 {/* --- СЕКЦИЯ СОЗДАНИЯ --- */}
@@ -106,18 +158,30 @@ export const NoteCreator = () => {
                                 <div className="flex flex-col items-center justify-center min-h-[140px] p-6">
                                     {audioBlob ? (
                                         <div className="flex flex-col items-center gap-4 w-full">
+                                            {audioBlob instanceof File && (
+                                                <div className="text-sm font-medium text-foreground flex items-center gap-2 mb-2 bg-muted px-3 py-1.5 rounded-md border border-border">
+                                                    <FileAudio className="h-4 w-4 text-primary" />
+                                                    {audioBlob.name}
+                                                </div>
+                                            )}
                                             <audio controls src={URL.createObjectURL(audioBlob)} className="w-full max-w-md h-10" />
-                                            <Button variant="ghost" size="sm" onClick={cancelAudio} className="text-destructive hover:bg-destructive/10">
-                                                <Trash2 className="h-4 w-4 mr-2" /> Удалить
+                                            <Button variant="ghost" size="sm" onClick={cancelAudio} className="text-destructive hover:bg-destructive/10 mt-2">
+                                                <Trash2 className="h-4 w-4 mr-2" /> Удалить {audioBlob instanceof File ? 'файл' : 'запись'}
                                             </Button>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center gap-4 w-full">
                                             {/* Визуализатор звука из хука */}
-                                            <div className="w-full max-w-[280px] h-12 bg-background rounded-md p-1 border border-border">
+                                            <div className={cn(
+                                                "w-full max-w-[280px] h-12 flex justify-center items-end bg-background rounded-md p-1 border border-border transition-opacity",
+                                                !isRecording && "opacity-50"
+                                            )}>
                                                 <canvas ref={canvasRef} width={280} height={40} className="w-full h-full" />
                                             </div>
-                                            <div className="text-3xl font-mono">{formattedTime}</div>
+                                            <div className={cn(
+                                                "text-3xl font-mono transition-colors tracking-tight",
+                                                isRecording && !isPaused ? "text-destructive" : "text-foreground"
+                                            )}>{formattedTime}</div>
                                             <div className="flex gap-3">
                                                 {!isRecording ? (
                                                     <Button onClick={startRecording} className="bg-destructive hover:bg-destructive/90 text-white rounded-full h-14 w-14">
@@ -125,10 +189,10 @@ export const NoteCreator = () => {
                                                     </Button>
                                                 ) : (
                                                     <>
-                                                        <Button onClick={isPaused ? resumeRecording : pauseRecording} variant="outline" className="rounded-full h-14 w-14">
+                                                        <Button onClick={isPaused ? resumeRecording : pauseRecording} variant="outline" className="rounded-full h-14 w-14 border-border">
                                                             {isPaused ? <Play className="h-6 w-6" /> : <Pause className="h-6 w-6" />}
                                                         </Button>
-                                                        <Button onClick={stopRecording} className="bg-foreground text-background hover:bg-foreground/90 rounded-full h-14 w-14">
+                                                        <Button onClick={stopRecording} className="bg-foreground text-background hover:bg-foreground/90 rounded-full h-14 w-14 shadow-md">
                                                             <Square className="h-5 w-5 fill-current" />
                                                         </Button>
                                                     </>
@@ -139,7 +203,9 @@ export const NoteCreator = () => {
                                 </div>
                             ) : (
                                 <Textarea
-                                    value={content} onChange={(e) => setContent(e.target.value)}
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                    onKeyDown={handleKeyDown}
                                     placeholder="Напишите заметку или идею..."
                                     className="w-full min-h-[120px] resize-none bg-transparent border-none focus-visible:ring-0 text-lg p-4"
                                 />
@@ -161,10 +227,10 @@ export const NoteCreator = () => {
                                     </Button>
                                 </div>
                                 <Button
-                                    onClick={() => isRecordingMode ? createAudioMutation.mutate({ title, file: new File([audioBlob!], "audio.webm") }) : createTextMutation.mutate({ title, content })}
+                                    onClick={isRecordingMode ? handleCreateAudio : handleCreateText}
                                     disabled={isPendingAny || (isRecordingMode ? !audioBlob : !content.trim())}
                                     size="icon"
-                                    className={cn("rounded-md", (isRecordingMode ? audioBlob : content.trim()) ? "bg-primary" : "bg-muted text-muted-foreground")}
+                                    className={cn("rounded-md transition-all", (isRecordingMode ? audioBlob : content.trim()) ? "bg-primary hover:bg-primary/90 shadow-md" : "bg-muted text-muted-foreground")}
                                 >
                                     {isPendingAny ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-5 w-5" />}
                                 </Button>
