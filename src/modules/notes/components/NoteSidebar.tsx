@@ -104,8 +104,8 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
             )}
             style={{ width: sidebarWidth }}
         >
-            {/* Header */}
-            <div className="h-12 border-b border-border flex items-center justify-between px-3 flex-shrink-0 bg-background/80 backdrop-blur-md">
+            {/* Header: Высота изменена на h-10 (40px) и отступы на px-4 для соответствия NoteToolbar */}
+            <div className="h-10 border-b border-border flex items-center justify-between px-4 flex-shrink-0 bg-background/80 backdrop-blur-md">
                 <div className="flex items-center gap-1">
                     <TabButton active={sidebarView === 'info'} onClick={() => setSidebarView('info')} icon={<Info className="h-4 w-4" />} />
                     <TabButton active={sidebarView === 'chat'} onClick={() => setSidebarView('chat')} icon={<MessageSquareText className="h-4 w-4" />} />
@@ -113,7 +113,8 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                         <TabButton active={sidebarView === 'audio'} onClick={() => setSidebarView('audio')} icon={<FileAudio className="h-4 w-4" />} />
                     )}
                 </div>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] select-none">
+                {/* Текст стал чуть менее ярким, чтобы не отвлекать, как в тулбаре */}
+                <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] select-none">
                     {sidebarView === 'chat' ? 'AI Chat' : sidebarView === 'audio' ? 'Audio' : 'Info'}
                 </span>
             </div>
@@ -210,7 +211,6 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
 
                         <Separator className="opacity-50" />
 
-                        {/* Удаление: Красноватый стиль */}
                         <Button
                             variant="outline"
                             size="sm"
@@ -232,9 +232,12 @@ const TabButton = ({ active, onClick, icon }: { active: boolean, onClick: () => 
     <Button
         variant="ghost"
         size="icon"
+        // h-8 идеально ложится в h-10 контейнер
         className={cn(
             "h-8 w-8 rounded-md transition-all",
-            active ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted"
+            active
+                ? "text-primary bg-primary/10 shadow-sm"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
         onClick={onClick}
     >
