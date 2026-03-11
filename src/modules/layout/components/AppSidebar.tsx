@@ -85,14 +85,14 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
         <aside
             className={cn(
                 "flex flex-col border-r border-border bg-muted/30 transition-[width] duration-300 ease-in-out relative flex-shrink-0 z-30 overflow-hidden",
-                isOpen ? "w-[280px] max-w-[280px]" : "w-[70px] max-w-[70px]"
+                isOpen ? "w-[280px]" : "w-[70px]"
             )}
         >
             {/* 1. ШАПКА */}
-            <div className="flex items-center h-16 flex-shrink-0 w-full relative">
+            <div className="flex items-center h-16 flex-shrink-0 w-full relative overflow-hidden">
                 <div className={cn(
-                    "flex items-center gap-2 font-bold text-foreground select-none overflow-hidden transition-opacity duration-300 absolute left-4",
-                    isOpen ? "opacity-100" : "opacity-0 invisible"
+                    "absolute left-[15px] flex items-center gap-2 font-bold text-foreground select-none transition-all duration-300",
+                    isOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 pointer-events-none"
                 )}>
                     <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center shrink-0 shadow-sm">
                         <span className="text-primary-foreground font-bold">N</span>
@@ -105,8 +105,8 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     size="icon"
                     onClick={toggle}
                     className={cn(
-                        "text-muted-foreground hover:text-foreground shrink-0 transition-[right,width,height,border-radius] duration-300 absolute",
-                        isOpen ? "right-4 h-8 w-8 rounded-full" : "right-[15px] h-10 w-10 rounded-lg"
+                        "absolute transition-all duration-300 h-10 w-10 rounded-lg text-muted-foreground hover:text-foreground shrink-0",
+                        isOpen ? "right-[15px]" : "left-[15px]"
                     )}
                 >
                     {isOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
@@ -114,21 +114,24 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
             </div>
 
             {/* 2. ДЕЙСТВИЯ */}
-            <div className="px-3 pb-3 flex flex-col items-center gap-2 flex-shrink-0 w-full">
-                <Link to="/chat" className="flex w-full justify-center">
+            <div className="px-[15px] pb-3 flex flex-col items-center gap-2 flex-shrink-0 w-full">
+                <Link to="/chat" className={cn("flex transition-all duration-300", isOpen ? "w-full" : "w-10")}>
                     <Button
                         variant={location.pathname === "/chat" ? "secondary" : "ghost"}
                         className={cn(
-                            "h-10 transition-[width,gap] duration-300 overflow-hidden border border-transparent rounded-lg flex justify-start px-3",
+                            "h-10 w-full transition-all duration-300 overflow-hidden border border-transparent rounded-lg flex",
                             location.pathname === "/chat"
                                 ? "bg-background text-foreground shadow-sm border-border"
                                 : "hover:bg-background/50 text-muted-foreground hover:text-foreground",
-                            isOpen ? "w-full gap-3" : "w-10 gap-0"
+                            isOpen ? "justify-start px-3 gap-3" : "justify-center p-0 gap-0"
                         )}
                         title={!isOpen ? "Общий чат" : undefined}
                     >
-                        <MessageCircle className="h-4 w-4 shrink-0" />
-                        <span className={cn("truncate transition-[width,opacity] duration-300 font-medium", isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 hidden")}>
+                        <MessageCircle className="h-5 w-5 shrink-0" />
+                        <span className={cn(
+                            "whitespace-nowrap transition-all duration-300 font-medium",
+                            isOpen ? "opacity-100 translate-x-0 w-auto" : "opacity-0 -translate-x-4 w-0 hidden"
+                        )}>
                             Общий чат
                         </span>
                     </Button>
@@ -138,43 +141,46 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     variant={isNotesActive ? "secondary" : "ghost"}
                     onClick={handleNotesClick}
                     className={cn(
-                        "h-10 transition-[width,gap] duration-300 overflow-hidden border border-transparent rounded-lg flex justify-start px-3",
+                        "h-10 transition-all duration-300 overflow-hidden border border-transparent rounded-lg flex",
                         isNotesActive
                             ? "bg-background text-foreground shadow-sm border-border"
                             : "hover:bg-background/50 text-muted-foreground hover:text-foreground",
-                        isOpen ? "w-full gap-3" : "w-10 gap-0"
+                        isOpen ? "w-full justify-start px-3 gap-3" : "w-10 justify-center p-0 gap-0 mx-auto"
                     )}
                     title={!isOpen ? "Workspace" : undefined}
                 >
-                    <FileText className="h-4 w-4 shrink-0" />
-                    <span className={cn("truncate transition-[width,opacity] duration-300 font-medium", isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 hidden")}>
+                    <FileText className="h-5 w-5 shrink-0" />
+                    <span className={cn(
+                        "whitespace-nowrap transition-all duration-300 font-medium",
+                        isOpen ? "opacity-100 translate-x-0 w-auto" : "opacity-0 -translate-x-4 w-0 hidden"
+                    )}>
                         Workspace
                     </span>
                 </Button>
             </div>
 
-            <Separator className="bg-border w-auto mx-4" />
+            <Separator className={cn("bg-border transition-all duration-300", isOpen ? "w-auto mx-[15px]" : "w-10 mx-auto")} />
 
             {/* 3. СПИСОК ЗАМЕТОК И ПОИСК */}
             <ScrollArea className="flex-1 bg-transparent">
                 {isOpen ? (
-                    <div className="w-[279px] max-w-[279px] py-3 pl-3 pr-4 flex flex-col overflow-hidden">
+                    <div className="w-[280px] max-w-[280px] py-3 pl-[15px] pr-[15px] flex flex-col overflow-hidden">
                         {/* Поиск */}
                         <div className="flex items-center gap-2 mb-3 w-full max-w-full">
                             <div className="relative flex-1 min-w-0">
-                                <Search className="absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground left-3" />
+                                <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground left-3" />
                                 <Input
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder="Поиск..."
-                                    className="h-8 w-full min-w-0 text-xs bg-background border-border rounded-lg focus-visible:ring-1 focus-visible:ring-primary/20 shadow-sm pl-9 pr-2 transition-none"
+                                    className="h-9 w-full min-w-0 text-xs bg-background border-border rounded-lg focus-visible:ring-1 focus-visible:ring-primary/20 shadow-sm pl-9 pr-2 transition-none"
                                     title="Поиск"
                                 />
                             </div>
                             <Button
                                 variant="ghost" size="icon"
                                 onClick={() => setSortDirection(prev => prev === 'Descending' ? 'Ascending' : 'Descending')}
-                                className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background/50 transition-none"
+                                className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background/50 transition-none"
                                 title={sortDirection === 'Descending' ? "Сначала новые" : "Сначала старые"}
                             >
                                 {sortDirection === 'Descending' ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
@@ -183,7 +189,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
                         {/* Карточки */}
                         {isLoading ? (
-                            <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/></div>
+                            <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground"/></div>
                         ) : notes.length === 0 ? (
                             <div className="text-center text-muted-foreground text-xs py-4 border border-dashed border-border rounded-lg m-1 w-full">Нет заметок</div>
                         ) : (
@@ -203,42 +209,40 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
             </ScrollArea>
 
             {/* 4. ПОДВАЛ С ПРОФИЛЕМ И НАСТРОЙКАМИ */}
-            <div className="p-3 border-t border-border bg-background/50 flex flex-col items-center gap-2 flex-shrink-0 w-full transition-[padding] duration-300">
-                <div className={cn("flex w-full items-center", isOpen ? "flex-row gap-1 mb-1" : "flex-col-reverse gap-2")}>
+            <div className="p-[15px] border-t border-border bg-background/50 flex flex-col items-center gap-2 flex-shrink-0 w-full transition-all duration-300">
 
+                {/* Группа Настройки + Тема */}
+                <div className={cn("flex w-full transition-all duration-300", isOpen ? "flex-row gap-2" : "flex-col-reverse gap-2")}>
                     <Button
                         variant="ghost"
                         className={cn(
-                            "transition-[width,height,gap,padding] duration-300 hover:bg-background text-muted-foreground rounded-lg flex items-center",
-                            isOpen ? "justify-start px-[10px] h-9 w-full flex-1 gap-3" : "justify-center p-0 h-10 w-10 gap-0"
+                            "transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center",
+                            isOpen ? "h-10 flex-1 px-3 justify-start gap-2" : "h-10 w-10 justify-center p-0 mx-auto"
                         )}
                         title={!isOpen ? "Настройки" : undefined}
                     >
-                        <Settings className="h-4 w-4 shrink-0" />
-                        <span className={cn("truncate transition-opacity duration-300 text-xs", isOpen ? "opacity-100 w-auto" : "opacity-0 w-0 hidden")}>Настройки</span>
+                        <Settings className="h-5 w-5 shrink-0" />
+                        {isOpen && <span className="text-xs font-medium truncate">Настройки</span>}
                     </Button>
 
                     <Button
                         variant="ghost"
-                        size="icon"
                         onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                        className={cn(
-                            "rounded-lg shrink-0 text-muted-foreground hover:bg-background transition-[width,height] duration-300 flex items-center justify-center",
-                            isOpen ? "h-9 w-9" : "h-10 w-10"
-                        )}
-                        title={!isOpen ? "Смена темы" : undefined}
+                        className="transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center justify-center h-10 w-10 p-0 mx-auto"
+                        title="Смена темы"
                     >
-                        {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                        {theme === 'dark' ? <Moon className="h-5 w-5 shrink-0" /> : <Sun className="h-5 w-5 shrink-0" />}
                     </Button>
                 </div>
 
+                {/* Аватар / Профиль */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
                             className={cn(
-                                "hover:bg-background transition-[width,height,gap,padding] duration-300 group min-w-0 rounded-lg flex items-center",
-                                isOpen ? "justify-start w-full h-12 gap-3 px-2" : "justify-center p-0 w-10 h-10 gap-0"
+                                "hover:bg-background transition-all duration-300 group min-w-0 rounded-lg flex items-center",
+                                isOpen ? "justify-start w-full h-12 gap-3 px-2" : "justify-center p-0 w-10 h-10 gap-0 mx-auto"
                             )}
                         >
                             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 text-primary-foreground font-semibold text-xs shadow-sm">
