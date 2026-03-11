@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/modules/auth"; // Добавили авторизацию
+import { useAuth } from "@/modules/auth";
 import { usersApi } from "@/modules/users";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut } from "lucide-react"; // Импортировали LogOut
+import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut } from "lucide-react";
 
 export default function ProfilePage() {
-    const { logout } = useAuth(); // Достали метод логаута
+    const { logout } = useAuth();
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
 

@@ -12,3 +12,26 @@ export interface UpdateUserProfileCommand {
 export interface UploadAvatarDto {
     avatarUrl: string;
 }
+
+export interface AIOperationSettingsDto {
+    targetLanguage?: string | null;
+    customPrompt?: string | null;
+    useCustomPrompt: boolean;
+}
+
+export interface UserAIProfileResponse {
+    aiOperationLanguage: string;
+    transcriptionProvider: string;
+    structureProvider: string;
+    summaryProvider: string;
+    globalChatProvider: string;
+    noteChatProvider: string;
+    transcription?: AIOperationSettingsDto;
+    structuring?: AIOperationSettingsDto;
+    summarization?: AIOperationSettingsDto;
+    globalChat?: AIOperationSettingsDto;
+    noteChat?: AIOperationSettingsDto;
+    providerSettings: Record<string, Record<string, string>>;
+}
+
+export type UpdateUserAIProfileCommand = Partial<UserAIProfileResponse>;

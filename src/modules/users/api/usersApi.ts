@@ -1,5 +1,11 @@
 import api from '@/shared/api/axios';
-import type { UserProfileResponse, UpdateUserProfileCommand, UploadAvatarDto } from '../types/usersTypes';
+import type {
+    UserProfileResponse,
+    UpdateUserProfileCommand,
+    UploadAvatarDto,
+    UserAIProfileResponse,
+    UpdateUserAIProfileCommand
+} from '../types/usersTypes';
 
 export const usersApi = {
     getProfile: async () => {
@@ -22,5 +28,18 @@ export const usersApi = {
 
     deleteAvatar: async () => {
         await api.delete('/users/avatar');
+    },
+
+    getAiProfile: async () => {
+        const { data } = await api.get<UserAIProfileResponse>('/users/ai-profile');
+        return data;
+    },
+
+    updateAiProfile: async (payload: UpdateUserAIProfileCommand) => {
+        await api.patch('/users/ai-profile', payload);
+    },
+
+    resetAiProfile: async () => {
+        await api.post('/users/ai-profile/reset');
     }
 };

@@ -62,7 +62,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
         },
     });
 
-    // Загрузка данных профиля для сайдбара
     const { data: profile } = useQuery({
         queryKey: ['userProfile'],
         queryFn: usersApi.getProfile,
@@ -221,6 +220,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 <div className={cn("flex w-full transition-all duration-300", isOpen ? "flex-row gap-2" : "flex-col-reverse gap-2")}>
                     <Button
                         variant="ghost"
+                        onClick={() => navigate('/settings')}
                         className={cn(
                             "transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center",
                             isOpen ? "h-10 flex-1 px-3 justify-start gap-2" : "h-10 w-10 justify-center p-0 mx-auto"
