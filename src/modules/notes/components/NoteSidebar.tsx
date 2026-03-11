@@ -21,7 +21,6 @@ import { NoteChatPanel } from "@/modules/chat";
 import { AudioPlayer, notesApi, type NoteDetailsDto, type NoteStatus } from "@/modules/notes";
 import { cn } from "@/shared/lib/utils";
 
-// Обновленный маппинг с твоими стилями
 const STATUS_MAP: Record<NoteStatus, { label: string; color: string }> = {
     Pending: {
         label: "Ожидание",
@@ -57,18 +56,42 @@ interface NoteSidebarProps {
     handleDelete: () => void;
 }
 
+interface NoteMutationContext {
+    previousNote: NoteDetailsDto | undefined;
+}
+
 export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarOpen, sidebarWidth, isResizing, handleDelete }: NoteSidebarProps) => {
     const queryClient = useQueryClient();
 
-    const invalidate = async () => await queryClient.invalidateQueries({ queryKey: ['note', note.id] });
+    const actionMutationOptions = {
+        onMutate: async (): Promise<NoteMutationContext> => {
+            await queryClient.cancelQueries({ queryKey: ['note', note.id] });
 
-    const transcribeMutation = useMutation({ mutationFn: notesApi.transcribe, onSuccess: invalidate });
-    const structureMutation = useMutation({ mutationFn: notesApi.structure, onSuccess: invalidate });
-    const summarizeMutation = useMutation({ mutationFn: notesApi.summarize, onSuccess: invalidate });
+            const previousNote = queryClient.getQueryData<NoteDetailsDto>(['note', note.id]);
+
+            queryClient.setQueryData<NoteDetailsDto>(['note', note.id], (old) =>
+                old ? { ...old, isProcessing: true, status: 'Pending' } : undefined
+            );
+
+            return { previousNote };
+        },
+        onError: (_err: unknown, _variables: string, context: NoteMutationContext | undefined) => {
+            if (context?.previousNote) {
+                queryClient.setQueryData(['note', note.id], context.previousNote);
+            }
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['note', note.id] });
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
+        }
+    };
+
+    const transcribeMutation = useMutation({ mutationFn: notesApi.transcribe, ...actionMutationOptions });
+    const structureMutation = useMutation({ mutationFn: notesApi.structure, ...actionMutationOptions });
+    const summarizeMutation = useMutation({ mutationFn: notesApi.summarize, ...actionMutationOptions });
 
     if (!isRightSidebarOpen) return null;
 
-    // Логика блокировки
     const isTranscribeDisabled = note.isProcessing;
     const isStructureDisabled = !note.rawText || note.isProcessing;
     const isSummarizeDisabled = !note.structuredText || note.isProcessing;

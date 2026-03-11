@@ -42,6 +42,11 @@ export default function NoteWorkspace() {
         queryKey: ['note', id],
         queryFn: () => notesApi.getById(id!),
         enabled: Boolean(id) && id !== 'new',
+        refetchInterval: (query) => {
+            const currentNote = query.state.data;
+            const isProcessing = currentNote?.isProcessing || currentNote?.status === 'Pending';
+            return isProcessing ? 3000 : false;
+        },
     });
 
     const [initializedNoteId, setInitializedNoteId] = useState<string | null>(null);
@@ -194,6 +199,22 @@ export default function NoteWorkspace() {
                             isEditing={isEditing}
                             toggleEditMode={toggleEditMode}
                         />
+                    )}
+
+                    {/* 2. ПОЛОСКА ОБРАБОТКИ: Размещена под тулбаром */}
+                    {!isCreating && note && (note.isProcessing || note.status === 'Pending') && (
+                        <div className="h-[3px] w-full bg-muted/20 overflow-hidden shrink-0">
+                            <div
+                                className="h-full w-1/3 rounded-full animate-shuttle bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"
+                                style={{ animation: 'shuttle 2s infinite ease-in-out' }}
+                            />
+                            <style dangerouslySetInnerHTML={{ __html: `
+                                @keyframes shuttle {
+                                    0% { transform: translateX(-110%); }
+                                    100% { transform: translateX(310%); }
+                                }
+                            `}} />
+                        </div>
                     )}
 
                     {isCreating ? <NoteCreator /> : (
