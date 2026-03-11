@@ -41,7 +41,7 @@ export const NoteEditor = ({ note, isLoading, isError, isEditing, displayContent
                         value={localContent}
                         onChange={(e) => setLocalContent(e.target.value)}
                         className="w-full h-full min-h-[60vh] resize-none bg-transparent border-0 focus-visible:ring-0 p-0 text-base leading-relaxed font-mono text-foreground"
-                        placeholder="Начните писать..."
+                        placeholder=""
                     />
                 ) : displayContent ? (
                     <Markdown>{displayContent}</Markdown>
