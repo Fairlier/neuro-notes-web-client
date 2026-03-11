@@ -5,11 +5,12 @@ import { useTheme } from "@/modules/theme";
 import { useTabs } from "../hooks/useTabs";
 import { useQuery } from "@tanstack/react-query";
 import { notesApi } from "@/modules/notes";
+import { usersApi } from "@/modules/users";
 import { cn } from "@/shared/lib/utils";
 import type { NoteListItemDto, SortDirection } from "@/modules/notes/types/notesTypes";
 import {
-    PanelLeftClose, PanelLeftOpen, Search, LogOut, FileText,
-    Loader2, Settings, User, ChevronRight,
+    PanelLeftClose, PanelLeftOpen, Search, FileText,
+    Loader2, Settings, ChevronRight,
     MessageCircle, ArrowDown, ArrowUp, Sun, Moon
 } from "lucide-react";
 
@@ -17,9 +18,6 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Separator } from "@/shared/ui/separator";
-import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu";
 import { SidebarNoteCard } from "./SidebarNoteCard";
 
 interface AppSidebarProps {
@@ -28,7 +26,7 @@ interface AppSidebarProps {
 }
 
 export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
-    const { logout, user } = useAuth();
+    const { user } = useAuth();
     const { theme, setTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
@@ -64,6 +62,13 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
         },
     });
 
+    // Загрузка данных профиля для сайдбара
+    const { data: profile } = useQuery({
+        queryKey: ['userProfile'],
+        queryFn: usersApi.getProfile,
+        enabled: !!user,
+    });
+
     const notes = data?.notes || [];
 
     const handleNoteClick = (e: React.MouseEvent, noteId: string, noteTitle: string) => {
@@ -80,6 +85,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
     };
 
     const isNotesActive = location.pathname === '/' || location.pathname.startsWith('/notes');
+    const displayName = profile?.nickname || user?.email || 'User';
 
     return (
         <aside
@@ -235,40 +241,31 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     </Button>
                 </div>
 
-                {/* Аватар / Профиль */}
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            className={cn(
-                                "hover:bg-background transition-all duration-300 group min-w-0 rounded-lg flex items-center",
-                                isOpen ? "justify-start w-full h-12 gap-3 px-2" : "justify-center p-0 w-10 h-10 gap-0 mx-auto"
-                            )}
-                        >
-                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 text-primary-foreground font-semibold text-xs shadow-sm">
-                                {user?.email?.charAt(0).toUpperCase() || 'U'}
+                {/* Кнопка перехода в профиль */}
+                <Button
+                    variant="ghost"
+                    onClick={() => navigate('/profile')}
+                    className={cn(
+                        "hover:bg-background transition-all duration-300 group min-w-0 rounded-lg flex items-center",
+                        isOpen ? "justify-start w-full h-12 gap-3 px-2" : "justify-center p-0 w-10 h-10 gap-0 mx-auto"
+                    )}
+                >
+                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 text-primary-foreground font-semibold text-xs shadow-sm overflow-hidden">
+                        {profile?.avatarUrl ? (
+                            <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                        ) : (
+                            displayName.charAt(0).toUpperCase()
+                        )}
+                    </div>
+                    {isOpen && (
+                        <>
+                            <div className="flex flex-col items-start text-left overflow-hidden min-w-0 flex-1 animate-in fade-in duration-200">
+                                <span className="text-sm font-medium text-foreground truncate w-full">{displayName}</span>
                             </div>
-                            {isOpen && (
-                                <>
-                                    <div className="flex flex-col items-start text-left overflow-hidden min-w-0 flex-1 animate-in fade-in duration-200">
-                                        <span className="text-sm font-medium text-foreground truncate w-full">{user?.email}</span>
-                                    </div>
-                                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
-                                </>
-                            )}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56 ml-2" side="right" sideOffset={5}>
-                        <DropdownMenuItem className="cursor-pointer rounded-md">
-                            <User className="mr-2 h-4 w-4" />
-                            <span>Профиль</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer rounded-md" onClick={logout}>
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Выйти</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+                        </>
+                    )}
+                </Button>
             </div>
         </aside>
     );

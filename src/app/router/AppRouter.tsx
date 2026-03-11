@@ -5,6 +5,7 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import NoteWorkspace from "@/pages/dashboard/NoteWorkspace";
 import GlobalChatPage from "@/pages/chat/GlobalChatPage";
+import ProfilePage from "@/pages/profile/ProfilePage.tsx";
 
 export const AppRouter = () => {
     return (
@@ -29,6 +30,9 @@ export const AppRouter = () => {
 
                     {/* Глобальный чат */}
                     <Route path="/chat" element={<GlobalChatPage />} />
+
+                    {/* Маршрут профиля */}
+                    <Route path="/profile" element={<ProfilePage />} />
 
                     {/* Fallback для неизвестных маршрутов */}
                     <Route path="*" element={<Navigate to="/" replace />} />
