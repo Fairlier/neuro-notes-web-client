@@ -49,6 +49,26 @@ export default function NoteWorkspace() {
         },
     });
 
+    const deleteMutation = useMutation({
+        mutationFn: (noteId: string) => notesApi.delete(noteId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            if (id) closeTab(id);
+        },
+        onError: (error) => {
+            console.error("Ошибка при удалении:", error);
+            alert("Не удалось удалить заметку. Попробуйте снова.");
+        }
+    });
+
+    const handleDelete = () => {
+        if (!id || id === 'new') return;
+
+        if (window.confirm("Вы уверены, что хотите удалить эту заметку? Это действие нельзя отменить.")) {
+            deleteMutation.mutate(id);
+        }
+    };
+
     const [initializedNoteId, setInitializedNoteId] = useState<string | null>(null);
 
     if (note && note.id !== initializedNoteId) {
@@ -124,12 +144,9 @@ export default function NoteWorkspace() {
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
-
             const totalWidth = document.body.clientWidth;
             const newWidth = totalWidth - e.clientX;
-
             const maxWidth = totalWidth / 2;
-
             if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) {
                 setSidebarWidth(newWidth);
             } else if (newWidth < MIN_SIDEBAR_WIDTH) {
@@ -160,7 +177,6 @@ export default function NoteWorkspace() {
         <div className="flex flex-col h-full w-full overflow-hidden bg-background text-foreground">
             {/* ШАПКА ТАБОВ */}
             <div className="h-10 bg-muted/50 flex items-end justify-between px-2 border-b border-border select-none flex-shrink-0 gap-2">
-                {/* Контейнер вкладок - убираем overflow-x-auto, добавляем min-w-0 и overflow-hidden */}
                 <div className="flex items-end flex-1 min-w-0 overflow-hidden">
                     {tabs.map((tab) => {
                         const isActive = tab.id === activeTabId;
@@ -196,7 +212,6 @@ export default function NoteWorkspace() {
                             </div>
                         );
                     })}
-                    {/* Кнопка добавления - не сжимается */}
                     <div
                         onClick={createNewTab}
                         className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-lg hover:bg-muted cursor-pointer text-muted-foreground transition-colors shrink-0"
@@ -205,7 +220,6 @@ export default function NoteWorkspace() {
                     </div>
                 </div>
 
-                {/* Кнопка сайдбара - не сжимается */}
                 <div className="pb-1.5 pl-2 border-l border-border shrink-0">
                     <Button
                         variant="ghost"
@@ -236,12 +250,6 @@ export default function NoteWorkspace() {
                                 className="h-full w-1/3 rounded-full animate-shuttle bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"
                                 style={{ animation: 'shuttle 2s infinite ease-in-out' }}
                             />
-                            <style dangerouslySetInnerHTML={{ __html: `
-                                @keyframes shuttle {
-                                    0% { transform: translateX(-110%); }
-                                    100% { transform: translateX(310%); }
-                                }
-                            `}} />
                         </div>
                     )}
 
@@ -279,7 +287,7 @@ export default function NoteWorkspace() {
                         isRightSidebarOpen={isRightSidebarOpen}
                         sidebarWidth={sidebarWidth}
                         isResizing={isResizing}
-                        handleDelete={() => {}}
+                        handleDelete={handleDelete}
                     />
                 )}
             </div>
