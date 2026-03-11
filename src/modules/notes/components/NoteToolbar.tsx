@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { motion } from "framer-motion"; // Добавляем для анимации
+import { motion } from "framer-motion"; 
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { cn } from "@/shared/lib/utils";
