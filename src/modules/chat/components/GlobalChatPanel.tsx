@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { chatApi } from "../api/chatApi";
+import { usersApi } from "@/modules/users";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
@@ -11,7 +12,14 @@ import Markdown from 'react-markdown';
 export const GlobalChatPanel = () => {
     const [input, setInput] = useState("");
     const scrollRef = useRef<HTMLDivElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const queryClient = useQueryClient();
+
+    // Запрос профиля пользователя для получения аватарки
+    const { data: profile } = useQuery({
+        queryKey: ['userProfile'],
+        queryFn: usersApi.getProfile,
+    });
 
     const { data, isLoading, isError, error } = useQuery({
         queryKey: ['global-chat'],
@@ -41,6 +49,15 @@ export const GlobalChatPanel = () => {
             scrollRef.current.scrollIntoView({ behavior: "smooth" });
         }
     }, [data?.messages, isLoading, sendMutation.isPending]);
+
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = "auto";
+            const nextHeight = Math.max(60, Math.min(textarea.scrollHeight, 200));
+            textarea.style.height = `${nextHeight}px`;
+        }
+    }, [input]);
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -75,27 +92,26 @@ export const GlobalChatPanel = () => {
     const messages = data?.messages || [];
 
     return (
-        <div className="flex flex-col h-full bg-background relative w-full text-foreground">
-            <div className="h-16 border-b border-border flex items-center justify-between px-4 sm:px-8 flex-shrink-0 bg-background/80 backdrop-blur-md z-10 sticky top-0">
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+        <div className="flex flex-col h-full bg-background relative w-full text-foreground overflow-hidden">
+            <div className="h-20 border-b border-border flex items-center justify-between px-4 sm:px-8 flex-shrink-0 bg-background/80 backdrop-blur-md z-10 sticky top-0">
+                <div className="flex items-center gap-4">
+                    <div className="h-11 w-11 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                         <MessageSquare className="h-5 w-5" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold leading-none">Общий чат</h1>
-                        <p className="text-xs text-muted-foreground mt-1 hidden sm:block">AI помощник по всем вашим заметкам</p>
+                        <h1 className="text-xl font-bold leading-none">Общий чат</h1>
                     </div>
                 </div>
 
                 <Button
-                    variant="ghost" size="sm"
-                    className="text-muted-foreground hover:text-destructive gap-2"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive gap-2 rounded-xl px-4 h-10"
                     onClick={() => {
                         if (confirm("Вы уверены, что хотите очистить историю переписки?")) clearMutation.mutate();
                     }}
                 >
                     <Trash2 className="h-4 w-4" />
-                    <span className="hidden sm:inline">Очистить</span>
+                    <span className="hidden sm:inline font-medium">Очистить</span>
                 </Button>
             </div>
 
@@ -119,10 +135,18 @@ export const GlobalChatPanel = () => {
                             return (
                                 <div key={msg.id} className={cn("flex gap-4", isUser ? "flex-row-reverse" : "")}>
                                     <div className={cn(
-                                        "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border mt-1",
+                                        "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border mt-1 overflow-hidden",
                                         isUser ? "bg-muted border-border" : "bg-primary border-primary text-primary-foreground shadow-md"
                                     )}>
-                                        {isUser ? <User className="h-4 w-4 text-muted-foreground" /> : <Bot className="h-4 w-4" />}
+                                        {isUser ? (
+                                            profile?.avatarUrl ? (
+                                                <img src={profile.avatarUrl} alt="Вы" className="h-full w-full object-cover" />
+                                            ) : (
+                                                <User className="h-4 w-4 text-muted-foreground" />
+                                            )
+                                        ) : (
+                                            <Bot className="h-4 w-4" />
+                                        )}
                                     </div>
 
                                     <div className={cn(
@@ -160,23 +184,31 @@ export const GlobalChatPanel = () => {
                 </div>
             </ScrollArea>
 
-            <div className="p-6 border-t border-border bg-background">
-                <div className="max-w-3xl mx-auto relative">
-                    <Textarea
-                        value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown}
-                        placeholder="Задайте вопрос по базе знаний..."
-                        className="min-h-[60px] max-h-[200px] w-full resize-none pr-14 py-3 pl-4 bg-muted/50 border-border focus-visible:ring-primary rounded-lg shadow-sm"
-                    />
-                    <Button
-                        size="icon"
-                        className="absolute bottom-2.5 right-2.5 h-9 w-9 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-all"
-                        onClick={handleSend} disabled={sendMutation.isPending || !input.trim()}
-                    >
-                        {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    </Button>
-                </div>
-                <div className="text-center mt-2 text-[10px] text-muted-foreground">
-                    AI может допускать ошибки. Проверяйте важную информацию.
+            <div className="p-4 sm:p-6 border-t border-border bg-background">
+                <div className="max-w-3xl mx-auto">
+                    <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm transition-all overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/20">
+                        <Textarea
+                            ref={textareaRef}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            placeholder="Задайте вопрос по базе знаний..."
+                            className="w-full min-h-[60px] resize-none bg-transparent border-none focus-visible:ring-0 text-base p-4 overflow-y-auto scrollbar-thin"
+                        />
+                        <div className="flex justify-end items-center p-2 bg-muted/50 rounded-b-lg border-t border-border">
+                            <Button
+                                onClick={handleSend}
+                                disabled={sendMutation.isPending || !input.trim()}
+                                size="icon"
+                                className={cn(
+                                    "rounded-md transition-all h-8 w-8",
+                                    input.trim() ? "bg-primary hover:bg-primary/90 shadow-md" : "bg-muted text-muted-foreground"
+                                )}
+                            >
+                                {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 ml-0.5" />}
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

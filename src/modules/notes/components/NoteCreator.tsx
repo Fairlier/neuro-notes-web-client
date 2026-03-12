@@ -31,7 +31,9 @@ export const NoteCreator = () => {
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [isRecordingMode, setIsRecordingMode] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const {
         isRecording, isPaused, audioBlob, setAudioBlob, formattedTime, canvasRef,
@@ -42,6 +44,15 @@ export const NoteCreator = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isFiltersOpen, setFiltersOpen] = useState(false);
+
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea && !isRecordingMode) {
+            textarea.style.height = "auto";
+            const nextHeight = Math.max(200, Math.min(textarea.scrollHeight, 600));
+            textarea.style.height = `${nextHeight}px`;
+        }
+    }, [content, isRecordingMode]);
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -143,9 +154,8 @@ export const NoteCreator = () => {
             />
 
             <ScrollArea className="flex-1" style={{ scrollbarGutter: 'stable' }}>
-                {/* --- СЕКЦИЯ СОЗДАНИЯ --- */}
                 <div className="border-b border-border bg-background">
-                    <div className="max-w-2xl mx-auto px-4 sm:px-8 py-8">
+                    <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
                         <h1 className="text-3xl font-light text-center mb-6">Что вы хотите создать?</h1>
 
                         <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm focus-within:ring-2 focus-within:ring-primary/20 mb-4 transition-all">
@@ -156,9 +166,9 @@ export const NoteCreator = () => {
                             />
                         </div>
 
-                        <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm transition-all">
+                        <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm transition-all overflow-hidden">
                             {isRecordingMode ? (
-                                <div className="flex flex-col items-center justify-center min-h-[140px] p-6">
+                                <div className="flex flex-col items-center justify-center min-h-[200px] p-6">
                                     {audioBlob ? (
                                         <div className="flex flex-col items-center gap-4 w-full">
                                             {audioBlob instanceof File && (
@@ -205,11 +215,12 @@ export const NoteCreator = () => {
                                 </div>
                             ) : (
                                 <Textarea
+                                    ref={textareaRef}
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Напишите заметку или идею..."
-                                    className="w-full min-h-[120px] resize-none bg-transparent border-none focus-visible:ring-0 text-lg p-4"
+                                    className="w-full min-h-[200px] resize-none bg-transparent border-none focus-visible:ring-0 text-lg p-6 overflow-y-auto scrollbar-thin"
                                 />
                             )}
 
@@ -223,8 +234,20 @@ export const NoteCreator = () => {
                                             <DropdownMenuItem onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Загрузить аудиофайл</DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
-                                    <Button variant={isRecordingMode ? "secondary" : "ghost"} size="icon" className="rounded-full" onClick={() => setIsRecordingMode(!isRecordingMode)}>
-                                        <Mic className="h-4 w-4" />
+
+                                    <Button
+                                        variant={isRecordingMode ? "secondary" : "ghost"}
+                                        size="icon"
+                                        className={cn("rounded-full", isRecordingMode && "text-primary")}
+                                        onClick={() => {
+                                            if (isRecordingMode) {
+                                                setTitle("");
+                                            }
+                                            setIsRecordingMode(!isRecordingMode);
+                                        }}
+                                        title={isRecordingMode ? "Переключиться на текст" : "Переключиться на голос"}
+                                    >
+                                        {isRecordingMode ? <Type className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                                     </Button>
                                 </div>
                                 <Button

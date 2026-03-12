@@ -97,14 +97,9 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
     };
 
     return (
-        /* ИЗМЕНЕНИЕ: Заменяем h-full на flex-1 и добавляем min-h-0.
-           Это заставит чат занимать ровно столько места, сколько осталось в сайдбаре
-           после отрисовки шапки.
-        */
         <div className="flex flex-col flex-1 min-h-0 bg-background min-w-0">
             <ScrollArea className="flex-1">
                 <div className="p-4 flex flex-col gap-4">
-                    {/* ... (isLoading и рендеринг сообщений) ... */}
                     {isLoading ? (
                         <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
                     ) : messages.length === 0 ? (
@@ -137,28 +132,30 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                 </div>
             </ScrollArea>
 
-            {/* Нижняя панель остается внизу */}
-            <div className="p-3 border-t border-border bg-background space-y-2 flex-shrink-0">
-                <div className="relative flex items-end gap-2 bg-muted/50 rounded-lg border border-border p-1 focus-within:ring-1 focus-within:ring-primary transition-all">
+            <div className="p-4 border-t border-border bg-background space-y-3 flex-shrink-0">
+                <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm transition-all overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/20">
                     <Textarea
                         ref={textareaRef}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder="Спросить..."
-                        className="min-h-[40px] max-h-[200px] bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0 resize-none py-2 px-3 w-full text-sm"
-                        rows={1}
+                        className="w-full min-h-[60px] resize-none bg-transparent border-none focus-visible:ring-0 text-sm p-3 overflow-y-auto scrollbar-thin"
                         disabled={sendMessageMutation.isPending}
                     />
-                    <Button
-                        type="button"
-                        onClick={handleSend}
-                        size="icon"
-                        className="shrink-0 mb-0.5 mr-0.5 h-8 w-8"
-                        disabled={!inputValue.trim() || sendMessageMutation.isPending}
-                    >
-                        <Send className="h-4 w-4" />
-                    </Button>
+                    <div className="flex justify-end items-center p-2 bg-muted/50 rounded-b-lg border-t border-border">
+                        <Button
+                            onClick={handleSend}
+                            disabled={!inputValue.trim() || sendMessageMutation.isPending}
+                            size="icon"
+                            className={cn(
+                                "rounded-md transition-all h-8 w-8",
+                                inputValue.trim() ? "bg-primary hover:bg-primary/90 shadow-md" : "bg-muted text-muted-foreground"
+                            )}
+                        >
+                            {sendMessageMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 ml-0.5" />}
+                        </Button>
+                    </div>
                 </div>
 
                 {messages.length > 0 && (

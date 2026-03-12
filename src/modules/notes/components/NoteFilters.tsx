@@ -95,6 +95,9 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                             <SelectItem value="Work">Работа</SelectItem>
                             <SelectItem value="Personal">Личное</SelectItem>
                             <SelectItem value="Ideas">Идеи</SelectItem>
+                            <SelectItem value="Study">Учеба</SelectItem>
+                            <SelectItem value="Other">Другое</SelectItem>
+                            <SelectItem value="Finance">Финансы</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
