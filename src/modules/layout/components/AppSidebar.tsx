@@ -62,10 +62,9 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
         },
     });
 
-    const { data: profile } = useQuery({
+    const { data: profile, isLoading: isProfileLoading } = useQuery({
         queryKey: ['userProfile'],
         queryFn: usersApi.getProfile,
-        enabled: !!user,
     });
 
     const notes = data?.notes || [];
@@ -251,7 +250,9 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     )}
                 >
                     <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 text-primary-foreground font-semibold text-xs shadow-sm overflow-hidden">
-                        {profile?.avatarUrl ? (
+                        {isProfileLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin opacity-50" />
+                        ) : profile?.avatarUrl ? (
                             <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
                         ) : (
                             displayName.charAt(0).toUpperCase()

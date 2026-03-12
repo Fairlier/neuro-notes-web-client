@@ -142,7 +142,6 @@ export const NoteCreator = () => {
                 onChange={handleFileSelect}
             />
 
-            {/* Добавлено style={{ scrollbarGutter: 'stable' }} для предотвращения горизонтального сдвига */}
             <ScrollArea className="flex-1" style={{ scrollbarGutter: 'stable' }}>
                 {/* --- СЕКЦИЯ СОЗДАНИЯ --- */}
                 <div className="border-b border-border bg-background">
@@ -282,7 +281,6 @@ export const NoteCreator = () => {
                         </CollapsibleContent>
                     </Collapsible>
 
-                    {/* Добавлен контейнер с min-h-[500px] для фиксации высоты результатов */}
                     <div className="mt-8 min-h-[500px]">
                         {isLoading ? (
                             <div className="flex justify-center py-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>

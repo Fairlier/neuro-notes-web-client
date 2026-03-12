@@ -1,4 +1,4 @@
-import axios, { type InternalAxiosRequestConfig } from 'axios';
+import axios, { isAxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -42,6 +42,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
+        if (!isAxiosError(error)) {
+            return Promise.reject(error);
+        }
+
         const originalRequest = error.config as CustomAxiosRequestConfig;
 
         if (!originalRequest) {

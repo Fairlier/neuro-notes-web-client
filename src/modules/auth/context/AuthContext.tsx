@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, type ReactNode } from 'react';
+import { jwtDecode } from 'jwt-decode';
 import { authApi } from '../api/authApi';
 import type { LoginRequest, RegisterRequest, User } from '@/modules/auth';
 
@@ -11,6 +12,16 @@ export interface AuthContextType {
     logout: () => void;
 }
 
+interface JwtPayload {
+    sub: string;
+    email: string;
+    name: string;
+    jti: string;
+    exp: number;
+    iss: string;
+    aud: string;
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -20,32 +31,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const checkAuth = async () => {
+        const restoreAuth = () => {
             const token = localStorage.getItem('accessToken');
+
             if (!token) {
                 setIsLoading(false);
                 return;
             }
 
             try {
+                const decoded = jwtDecode<JwtPayload>(token);
+
+                setUser({
+                    id: decoded.sub,
+                    email: decoded.email
+                });
                 setIsAuthenticated(true);
             } catch (error) {
-                console.error("Auth check failed", error);
-                logout();
+                console.error('Failed to decode token:', error);
+                localStorage.removeItem('accessToken');
             } finally {
                 setIsLoading(false);
             }
         };
 
-        void checkAuth();
+        restoreAuth();
     }, []);
 
     const login = async (data: LoginRequest) => {
-        const responseData = await authApi.login(data);
-        localStorage.setItem('accessToken', responseData.accessToken);
+        const response = await authApi.login(data);
+
+        localStorage.setItem('accessToken', response.accessToken);
 
         setUser({
-            id: responseData.id,
+            id: response.id,
             email: data.email
         });
         setIsAuthenticated(true);
@@ -59,7 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('accessToken');
         setUser(null);
         setIsAuthenticated(false);
-        authApi.logout().catch((err) => console.error(err));
+
+        authApi.logout().catch((error) => {
+            console.error('Logout API error:', error);
+        });
     };
 
     return (

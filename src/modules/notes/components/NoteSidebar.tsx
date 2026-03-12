@@ -18,7 +18,7 @@ import {
     History
 } from "lucide-react";
 import { NoteChatPanel } from "@/modules/chat";
-import { AudioPlayer, notesApi, type NoteDetailsDto, type NoteStatus } from "@/modules/notes";
+import { AudioPlayer, notesApi, type NoteDetailsDto, type NoteStatus, type NoteListItemDto } from "@/modules/notes";
 import { cn } from "@/shared/lib/utils";
 
 const STATUS_MAP: Record<NoteStatus, { label: string; color: string }> = {
@@ -66,11 +66,27 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
     const actionMutationOptions = {
         onMutate: async (): Promise<NoteMutationContext> => {
             await queryClient.cancelQueries({ queryKey: ['note', note.id] });
+            await queryClient.cancelQueries({ queryKey: ['notes'] });
 
             const previousNote = queryClient.getQueryData<NoteDetailsDto>(['note', note.id]);
 
             queryClient.setQueryData<NoteDetailsDto>(['note', note.id], (old) =>
                 old ? { ...old, isProcessing: true, status: 'Pending' } : undefined
+            );
+
+            queryClient.setQueriesData<{ notes: NoteListItemDto[] }>(
+                { queryKey: ['notes'] },
+                (old) => {
+                    if (!old?.notes) return old;
+                    return {
+                        ...old,
+                        notes: old.notes.map(n =>
+                            n.id === note.id
+                                ? { ...n, isProcessing: true, status: 'Pending' as NoteStatus }
+                                : n
+                        )
+                    };
+                }
             );
 
             return { previousNote };
@@ -79,6 +95,7 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
             if (context?.previousNote) {
                 queryClient.setQueryData(['note', note.id], context.previousNote);
             }
+            queryClient.invalidateQueries({ queryKey: ['notes'] });
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['note', note.id] });
@@ -104,7 +121,6 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
             )}
             style={{ width: sidebarWidth }}
         >
-            {/* Header: Высота изменена на h-10 (40px) и отступы на px-4 для соответствия NoteToolbar */}
             <div className="h-10 border-b border-border flex items-center justify-between px-4 flex-shrink-0 bg-background/80 backdrop-blur-md">
                 <div className="flex items-center gap-1">
                     <TabButton active={sidebarView === 'info'} onClick={() => setSidebarView('info')} icon={<Info className="h-4 w-4" />} />
@@ -113,7 +129,6 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                         <TabButton active={sidebarView === 'audio'} onClick={() => setSidebarView('audio')} icon={<FileAudio className="h-4 w-4" />} />
                     )}
                 </div>
-                {/* Текст стал чуть менее ярким, чтобы не отвлекать, как в тулбаре */}
                 <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] select-none">
                     {sidebarView === 'chat' ? 'AI Chat' : sidebarView === 'audio' ? 'Audio' : 'Info'}
                 </span>
@@ -140,7 +155,6 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
             {sidebarView === 'info' && (
                 <ScrollArea className="flex-1">
                     <div className="p-4 space-y-6">
-                        {/* Свойства */}
                         <section className="space-y-3">
                             <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">Свойства</h4>
                             <div className="space-y-2.5 bg-background/50 rounded-lg p-3 border border-border/40 shadow-sm">
@@ -179,7 +193,6 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                             </div>
                         </section>
 
-                        {/* Действия AI */}
                         <section className="space-y-3">
                             <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">Действия</h4>
                             <div className="grid gap-2">
@@ -226,13 +239,10 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
     );
 };
 
-/* --- UI Helpers --- */
-
 const TabButton = ({ active, onClick, icon }: { active: boolean, onClick: () => void, icon: React.ReactNode }) => (
     <Button
         variant="ghost"
         size="icon"
-        // h-8 идеально ложится в h-10 контейнер
         className={cn(
             "h-8 w-8 rounded-md transition-all",
             active

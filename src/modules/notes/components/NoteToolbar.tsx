@@ -54,7 +54,6 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
             <div className="flex items-center gap-2">
                 <StatusBadge status={note.status} />
 
-                {/* Тот самый разделитель */}
                 <Separator orientation="vertical" className="h-4 mx-1 opacity-50" />
 
                 <span className="text-[11px] text-muted-foreground/70 font-normal">

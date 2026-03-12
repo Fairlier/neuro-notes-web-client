@@ -12,7 +12,13 @@ interface NoteFiltersProps {
 }
 
 export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: NoteFiltersProps) => {
-    const hasActiveFilters = !!(filters.status || filters.sourceType || filters.category);
+    const hasActiveFilters = !!(
+        filters.status ||
+        filters.sourceType ||
+        filters.category ||
+        (filters.sortBy && filters.sortBy !== "CreatedAt") ||
+        (filters.sortDirection && filters.sortDirection !== "Descending")
+    );
 
     return (
         <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border animate-in fade-in duration-200 flex flex-col gap-5">
@@ -36,7 +42,7 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                 </Button>
             </div>
 
-            {/* Блок Фильтров [cite: 465, 475] */}
+            {/* Блок Фильтров */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Статус</label>
@@ -96,7 +102,7 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
 
             <div className="h-px bg-border w-full" />
 
-            {/* Блок Сортировки [cite: 481, 493] */}
+            {/* Блок Сортировки */}
             <div className={cn(
                 "flex flex-col gap-3 transition-opacity",
                 isSemanticSearch && "opacity-50"
@@ -142,7 +148,6 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                     </Select>
                 </div>
             </div>
-
         </div>
     );
 };

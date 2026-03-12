@@ -11,7 +11,6 @@ interface SidebarNoteCardProps {
     onClick: (e: React.MouseEvent, noteId: string, noteTitle: string) => void;
 }
 
-// Выносим маппинг цветов, чтобы он совпадал с NoteCard
 const statusBorderColors: Record<NoteStatus, string> = {
     'Pending': 'bg-muted-foreground/40',
     'Failed': 'bg-red-500',

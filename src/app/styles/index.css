@@ -21,3 +21,13 @@
         --radius: 1rem;
     }
 }
+
+@layer utilities {
+    @keyframes shuttle {
+        0% { transform: translateX(-110%); }
+        100% { transform: translateX(310%); }
+    }
+    .animate-shuttle {
+        animation: shuttle 2s infinite ease-in-out;
+    }
+}

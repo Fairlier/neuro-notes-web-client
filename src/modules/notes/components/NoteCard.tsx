@@ -37,7 +37,6 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
             {/* Контент карточки */}
             <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {/* ОБНОВЛЕННЫЙ БЛОК ИКОНКИ: теперь стили общие для всех типов */}
                     <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-muted text-muted-foreground">
                         {note.sourceType === 'AudioFile' ? (
                             <FileAudio className="h-4 w-4" />
