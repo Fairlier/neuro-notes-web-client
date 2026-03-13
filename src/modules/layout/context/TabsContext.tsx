@@ -14,6 +14,7 @@ interface TabsContextType {
     closeTab: (id: string) => void;
     setActiveTab: (id: string) => void;
     createNewTab: () => void;
+    clearAllTabs: () => void;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -91,9 +92,16 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     const setActiveTab = useCallback((id: string) => navigate(`/notes/${id}`), [navigate]);
     const createNewTab = useCallback(() => navigate('/notes/new'), [navigate]);
 
+    const clearAllTabs = useCallback(() => {
+        setTabs([]);
+        setLastActiveTabId(null);
+        localStorage.removeItem(TABS_STORAGE_KEY);
+        localStorage.removeItem(LAST_ACTIVE_KEY);
+    }, []);
+
     const value = useMemo(() => ({
-        tabs, activeTabId, lastActiveTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab
-    }), [tabs, activeTabId, lastActiveTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab]);
+        tabs, activeTabId, lastActiveTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab, clearAllTabs
+    }), [tabs, activeTabId, lastActiveTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab, clearAllTabs]);
 
     return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }

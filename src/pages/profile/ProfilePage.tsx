@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/modules/auth";
+import { useTabs } from "@/modules/layout";
 import { usersApi } from "@/modules/users";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -9,11 +10,12 @@ import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut } from "lucide-reac
 
 export default function ProfilePage() {
     const { logout } = useAuth();
+    const { clearAllTabs } = useTabs();
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [nickname, setNickname] = useState("");
-    const [language, setLanguage] = useState("");
+    const [localNickname, setLocalNickname] = useState<string | null>(null);
+    const [localLanguage, setLocalLanguage] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState("");
 
     const { data: profile, isLoading } = useQuery({
@@ -21,17 +23,17 @@ export default function ProfilePage() {
         queryFn: usersApi.getProfile,
     });
 
-    useEffect(() => {
-        if (profile) {
-            setNickname(profile.nickname || "");
-            setLanguage(profile.interfaceLanguage || "ru");
-        }
-    }, [profile]);
+    const nickname = localNickname ?? profile?.nickname ?? "";
+    const language = localLanguage ?? profile?.interfaceLanguage ?? "ru";
 
     const updateProfileMutation = useMutation({
         mutationFn: usersApi.updateProfile,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userProfile'] });
+
+            setLocalNickname(null);
+            setLocalLanguage(null);
+
             setSuccessMsg("Профиль успешно обновлен");
             setTimeout(() => setSuccessMsg(""), 3000);
         }
@@ -57,6 +59,11 @@ export default function ProfilePage() {
         if (file) {
             uploadAvatarMutation.mutate(file);
         }
+    };
+
+    const handleLogout = () => {
+        clearAllTabs();
+        logout();
     };
 
     if (isLoading) {
@@ -110,7 +117,7 @@ export default function ProfilePage() {
                         <label className="text-sm font-medium text-foreground">Никнейм</label>
                         <Input
                             value={nickname}
-                            onChange={(e) => setNickname(e.target.value)}
+                            onChange={(e) => setLocalNickname(e.target.value)}
                             placeholder="Ваш никнейм"
                             className="max-w-md"
                         />
@@ -118,7 +125,7 @@ export default function ProfilePage() {
 
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-foreground">Язык интерфейса</label>
-                        <Select value={language} onValueChange={setLanguage}>
+                        <Select value={language} onValueChange={setLocalLanguage}>
                             <SelectTrigger className="max-w-md">
                                 <SelectValue placeholder="Выберите язык" />
                             </SelectTrigger>
@@ -147,7 +154,7 @@ export default function ProfilePage() {
                 {/* Секция выхода из аккаунта */}
                 <div className="space-y-3">
                     <h3 className="font-medium text-destructive">Управление аккаунтом</h3>
-                    <Button variant="destructive" onClick={logout} className="w-fit">
+                    <Button variant="destructive" onClick={handleLogout} className="w-fit">
                         <LogOut className="mr-2 h-4 w-4" />
                         Выйти из аккаунта
                     </Button>

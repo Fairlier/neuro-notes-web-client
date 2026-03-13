@@ -177,7 +177,20 @@ export default function NoteWorkspace() {
         <div className="flex flex-col h-full w-full overflow-hidden bg-background text-foreground">
             {/* ШАПКА ТАБОВ */}
             <div className="h-10 bg-muted/50 flex items-end justify-between px-2 border-b border-border select-none flex-shrink-0 gap-2">
-                <div className="flex items-end flex-1 min-w-0 overflow-hidden">
+
+                {/* ИЗМЕНЕНИЯ ЗДЕСЬ:
+                    1. overflow-x-auto для скролла
+                    2. Классы скрытия скроллбара: [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]
+                    3. onWheel для скролла колесиком мыши
+                */}
+                <div
+                    className="flex items-end flex-1 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                    onWheel={(e) => {
+                        if (e.deltaY !== 0) {
+                            e.currentTarget.scrollLeft += e.deltaY;
+                        }
+                    }}
+                >
                     {tabs.map((tab) => {
                         const isActive = tab.id === activeTabId;
                         return (
@@ -186,10 +199,9 @@ export default function NoteWorkspace() {
                                 onClick={() => setActiveTab(tab.id)}
                                 className={cn(
                                     "group relative flex items-center gap-2 px-3 py-2 cursor-pointer text-xs font-medium border-t border-x rounded-t-lg transition-all mr-[-1px]",
-                                    "flex-shrink min-w-0",
-                                    "basis-[160px]",
+                                    "shrink-0 w-[160px]", // ИЗМЕНЕНИЯ ЗДЕСЬ: Заменили flex-shrink на жесткий shrink-0 и w-[160px]
                                     isActive
-                                        ? "bg-background border-border text-foreground z-10 shadow-sm flex-shrink-0 basis-auto max-w-[200px]"
+                                        ? "bg-background border-border text-foreground z-10 shadow-sm"
                                         : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
                                 )}
                             >
