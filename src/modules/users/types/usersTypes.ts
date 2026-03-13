@@ -1,12 +1,14 @@
 export interface UserProfileResponse {
     nickname: string;
     interfaceLanguage: string;
+    theme: string;
     avatarUrl?: string | null;
 }
 
 export interface UpdateUserProfileCommand {
     nickname?: string;
     interfaceLanguage?: string;
+    theme?: string;
 }
 
 export interface UploadAvatarDto {

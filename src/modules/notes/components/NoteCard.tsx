@@ -34,9 +34,10 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
                 )}
             />
 
-            {/* Контент карточки */}
+            {/* Контент карточки: ВЕРХНЯЯ СТРОКА */}
             <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {/* Верхняя иконка в контейнере w-8 */}
                     <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-muted text-muted-foreground">
                         {note.sourceType === 'AudioFile' ? (
                             <FileAudio className="h-4 w-4" />
@@ -51,9 +52,14 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
                 </div>
             </div>
 
+            {/* Контент карточки: НИЖНЯЯ СТРОКА */}
             <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1">
-                <div className="flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
+                {/* Изменили gap-1 на gap-2, чтобы отступ до текста совпадал с верхней строкой */}
+                <div className="flex items-center gap-2">
+                    {/* Добавили обертку w-8 для центровки иконки календаря ровно под верхней иконкой */}
+                    <div className="w-8 flex justify-center shrink-0">
+                        <Calendar className="h-3 w-3" />
+                    </div>
                     <span>{format(new Date(note.createdAt), "d MMM yyyy", { locale: ru })}</span>
                 </div>
                 {note.category && (

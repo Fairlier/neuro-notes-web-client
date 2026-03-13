@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { useMutation, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { notesApi } from "../api/notesApi";
 import { useAudioRecorder } from "@/modules/notes";
 import { NoteCard } from "./NoteCard";
@@ -34,6 +34,7 @@ export const NoteCreator = () => {
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const loadMoreRef = useRef<HTMLDivElement>(null);
 
     const {
         isRecording, isPaused, audioBlob, setAudioBlob, formattedTime, canvasRef,
@@ -59,19 +60,55 @@ export const NoteCreator = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const { data, isLoading, isFetching } = useQuery({
-        queryKey: ['notes', 'search', filters, debouncedSearch],
-        queryFn: () => notesApi.getAll({ ...filters, searchTerm: debouncedSearch || undefined }),
-        placeholderData: keepPreviousData,
+    const {
+        data,
+        isLoading,
+        isFetching,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage
+    } = useInfiniteQuery({
+        // Убираем filters.page из ключа, чтобы при скролле не создавался новый кэш, а добавлялись страницы
+        queryKey: ['notes', 'search', { ...filters, page: undefined }, debouncedSearch],
+        queryFn: ({ pageParam = 1 }) =>
+            notesApi.getAll({ ...filters, page: pageParam, searchTerm: debouncedSearch || undefined }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            return lastPage.notes.length === filters.pageSize ? allPages.length + 1 : undefined;
+        },
         refetchInterval: (query) => {
-            const currentQuery = query as { state?: { data?: { notes?: NoteListItemDto[] } } };
-            const notesList = currentQuery.state?.data?.notes || [];
-            const hasProcessingNotes = notesList.some(
-                (note) => note.isProcessing || note.status === 'Pending'
+            const currentQuery = query as { state?: { data?: { pages?: { notes: NoteListItemDto[] }[] } } };
+            const pages = currentQuery.state?.data?.pages || [];
+            const hasProcessingNotes = pages.some(page =>
+                page.notes.some(note => note.isProcessing || note.status === 'Pending')
             );
             return hasProcessingNotes ? 3000 : false;
         },
     });
+
+    const allNotes = data?.pages.flatMap(page => page.notes) || [];
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+                    fetchNextPage();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentTarget = loadMoreRef.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) {
+                observer.unobserve(currentTarget);
+            }
+        };
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
     const createTextMutation = useMutation({
         mutationFn: notesApi.createDirectText,
@@ -263,7 +300,6 @@ export const NoteCreator = () => {
                     </div>
                 </div>
 
-                {/* --- СЕКЦИЯ ПОИСКА --- */}
                 <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 pb-32">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary"><Search className="h-5 w-5" /></div>
@@ -296,10 +332,7 @@ export const NoteCreator = () => {
                                 filters={filters}
                                 onChange={handleFilterChange}
                                 isSemanticSearch={filters.searchMode === 'Semantic' && !!debouncedSearch}
-                                onClear={() => setFilters({
-                                    ...DEFAULT_FILTERS,
-                                    searchMode: filters.searchMode
-                                })}
+                                onClear={() => setFilters(DEFAULT_FILTERS)}
                             />
                         </CollapsibleContent>
                     </Collapsible>
@@ -307,21 +340,29 @@ export const NoteCreator = () => {
                     <div className="mt-8 min-h-[500px]">
                         {isLoading ? (
                             <div className="flex justify-center py-40"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                        ) : data?.notes.length === 0 ? (
+                        ) : allNotes.length === 0 ? (
                             <div className="text-center py-40 text-muted-foreground">
                                 <FileQuestion className="h-10 w-10 mx-auto mb-4 opacity-50" />
                                 <p className="text-lg">Заметки не найдены</p>
                                 <p className="text-sm opacity-70">Попробуйте изменить параметры фильтрации</p>
                             </div>
                         ) : (
-                            <div className={cn(
-                                "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity duration-200 content-start",
-                                isFetching && "opacity-50 pointer-events-none"
-                            )}>
-                                {data?.notes.map(note => (
-                                    <NoteCard key={note.id} note={note} onClick={() => openNoteInCurrentTab(note.id, note.title)} />
-                                ))}
-                            </div>
+                            <>
+                                <div className={cn(
+                                    "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 transition-opacity duration-200 content-start",
+                                    isFetching && !isFetchingNextPage && "opacity-50 pointer-events-none"
+                                )}>
+                                    {allNotes.map(note => (
+                                        <NoteCard key={note.id} note={note} onClick={() => openNoteInCurrentTab(note.id, note.title)} />
+                                    ))}
+                                </div>
+
+                                <div ref={loadMoreRef} className="w-full flex justify-center py-8">
+                                    {isFetchingNextPage && (
+                                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                    )}
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>

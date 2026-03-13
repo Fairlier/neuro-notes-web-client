@@ -23,6 +23,10 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
     const dateToUse = note.updatedAt ? new Date(note.updatedAt) : new Date(note.createdAt);
     const isAudio = note.sourceType === 'AudioFile';
 
+    const formattedCategory = note.category
+        ? note.category.charAt(0).toUpperCase() + note.category.slice(1).toLowerCase()
+        : null;
+
     return (
         <Button
             variant="ghost"
@@ -44,6 +48,7 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
 
             {/* 2. Верхняя часть: Иконка + Заголовок */}
             <div className="flex items-center gap-2.5 w-full min-w-0">
+                {/* Иконка в контейнере w-7 */}
                 <div className={cn(
                     "h-7 w-7 rounded-md flex items-center justify-center shrink-0 transition-colors",
                     isActive ? "bg-muted text-foreground" : "bg-muted/50 text-muted-foreground group-hover:bg-muted"
@@ -64,17 +69,23 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
             </div>
 
             {/* 3. Метаданные (Дата и категория) */}
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground w-full pl-0.5">
-                <div className="flex items-center gap-1 shrink-0">
+            {/* Используем тот же gap-2.5, что и в верхней строке, убрали pl-0.5 */}
+            <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground w-full">
+                {/* Обертка w-7 для идеальной центровки под верхней иконкой */}
+                <div className="w-7 flex justify-center shrink-0">
                     <Calendar className="h-3 w-3" />
-                    <span>{format(dateToUse, "d MMM yyyy", { locale: ru })}</span>
                 </div>
 
-                {note.category && (
-                    <span className="truncate bg-muted/60 px-1.5 py-0.5 rounded-sm text-[9px] uppercase tracking-wider font-semibold">
-                        {note.category}
-                    </span>
-                )}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span>{format(dateToUse, "d MMM yyyy", { locale: ru })}</span>
+
+                    {formattedCategory && (
+                        // Убрали класс uppercase
+                        <span className="truncate bg-muted/60 px-1.5 py-0.5 rounded-sm text-[9px] tracking-wider font-semibold">
+                            {formattedCategory}
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* 4. Нижняя полоска (Анимация обработки) */}

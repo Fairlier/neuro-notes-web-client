@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/modules/auth";
 import { useTheme } from "@/modules/theme";
 import { useTabs } from "../hooks/useTabs";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { notesApi } from "@/modules/notes";
-import { usersApi } from "@/modules/users";
+import { usersApi, type UserProfileResponse } from "@/modules/users";
 import { cn } from "@/shared/lib/utils";
 import type { NoteListItemDto, SortDirection } from "@/modules/notes/types/notesTypes";
 import {
@@ -30,12 +30,15 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
     const { theme, setTheme } = useTheme();
     const location = useLocation();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
 
     const { openNoteInCurrentTab, tabs, activeTabId } = useTabs();
 
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [sortDirection, setSortDirection] = useState<SortDirection>("Descending");
+
+    const loadMoreRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -44,30 +47,93 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const { data, isLoading } = useQuery({
+    const {
+        data,
+        isLoading,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage
+    } = useInfiniteQuery({
         queryKey: ['notes', 'sidebar', debouncedSearch, sortDirection],
-        queryFn: () => notesApi.getAll({
+        queryFn: ({ pageParam = 1 }) => notesApi.getAll({
+            page: pageParam,
             pageSize: 50,
             sortBy: 'UpdatedAt',
             sortDirection: sortDirection,
             searchTerm: debouncedSearch || undefined,
             searchMode: 'Title'
         }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            return lastPage.notes.length === 50 ? allPages.length + 1 : undefined;
+        },
         refetchInterval: (query) => {
-            const notesList = query.state.data?.notes || [];
-            const hasProcessingNotes = notesList.some(
-                note => note.isProcessing || note.status === 'Pending'
+            const currentQuery = query as { state?: { data?: { pages?: { notes: NoteListItemDto[] }[] } } };
+            const pages = currentQuery.state?.data?.pages || [];
+            const hasProcessingNotes = pages.some(page =>
+                page.notes.some(note => note.isProcessing || note.status === 'Pending')
             );
             return hasProcessingNotes ? 3000 : false;
         },
     });
+
+    const notes = data?.pages.flatMap(page => page.notes) || [];
+
+    // Добавлен IntersectionObserver для подгрузки при скролле
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+                    fetchNextPage();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        const currentTarget = loadMoreRef.current;
+        if (currentTarget) {
+            observer.observe(currentTarget);
+        }
+
+        return () => {
+            if (currentTarget) {
+                observer.unobserve(currentTarget);
+            }
+        };
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
     const { data: profile, isLoading: isProfileLoading } = useQuery({
         queryKey: ['userProfile'],
         queryFn: usersApi.getProfile,
     });
 
-    const notes = data?.notes || [];
+    useEffect(() => {
+        if (profile?.theme) {
+            const newTheme = profile.theme === "system" ? "light" : profile.theme;
+            if (newTheme !== theme) {
+                setTheme(newTheme as "light" | "dark");
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profile?.theme]);
+
+    const updateThemeMutation = useMutation({
+        mutationFn: (newTheme: string) => usersApi.updateProfile({ theme: newTheme }),
+        onSuccess: (_, newTheme) => {
+            queryClient.setQueryData<UserProfileResponse>(['userProfile'], (oldData) => {
+                if (!oldData) return oldData;
+                return { ...oldData, theme: newTheme };
+            });
+        }
+    });
+
+    const handleThemeToggle = () => {
+        const currentEffectiveTheme = theme === 'system' ? 'light' : theme;
+        const newTheme = currentEffectiveTheme === 'light' ? 'dark' : 'light';
+
+        setTheme(newTheme);
+        updateThemeMutation.mutate(newTheme);
+    };
 
     const handleNoteClick = (e: React.MouseEvent, noteId: string, noteTitle: string) => {
         e.preventDefault();
@@ -206,6 +272,11 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                         onClick={handleNoteClick}
                                     />
                                 ))}
+
+                                {/* Элемент для триггера загрузки */}
+                                <div ref={loadMoreRef} className="w-full flex justify-center py-2 h-8">
+                                    {isFetchingNextPage && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -232,7 +303,8 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
                     <Button
                         variant="ghost"
-                        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                        onClick={handleThemeToggle}
+                        disabled={updateThemeMutation.isPending}
                         className="transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center justify-center h-10 w-10 p-0 mx-auto"
                         title="Смена темы"
                     >

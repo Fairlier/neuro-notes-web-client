@@ -16,7 +16,7 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
         filters.status ||
         filters.sourceType ||
         filters.category ||
-        (filters.sortBy && filters.sortBy !== "CreatedAt") ||
+        (filters.sortBy && filters.sortBy !== "UpdatedAt") ||
         (filters.sortDirection && filters.sortDirection !== "Descending")
     );
 
@@ -124,15 +124,16 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                 <div className="grid grid-cols-2 gap-3">
                     <Select
                         disabled={isSemanticSearch}
-                        value={filters.sortBy || "CreatedAt"}
+                        value={filters.sortBy || "UpdatedAt"}
                         onValueChange={(v) => onChange("sortBy", v as GetNotesParams['sortBy'])}
                     >
                         <SelectTrigger className="h-9 text-xs bg-background">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-background shadow-md">
-                            <SelectItem value="CreatedAt">Дате создания</SelectItem>
+                            {/* Порядок изменен для логичности (дефолтное значение первым) */}
                             <SelectItem value="UpdatedAt">Дате обновления</SelectItem>
+                            <SelectItem value="CreatedAt">Дате создания</SelectItem>
                             <SelectItem value="Title">Названию</SelectItem>
                         </SelectContent>
                     </Select>
