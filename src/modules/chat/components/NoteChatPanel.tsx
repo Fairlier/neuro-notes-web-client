@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Send, Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, ArrowUp } from "lucide-react";
 
 import { chatApi } from "../api/chatApi";
 import type { ChatMessageDto, ChatHistoryResponse } from "@/modules/chat";
@@ -132,7 +132,7 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                 </div>
             </ScrollArea>
 
-            <div className="p-4 border-t border-border bg-background space-y-3 flex-shrink-0">
+            <div className="p-4 border-t border-border bg-background flex-shrink-0">
                 <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm transition-all overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/20">
                     <Textarea
                         ref={textareaRef}
@@ -143,7 +143,28 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                         className="w-full min-h-[60px] resize-none bg-transparent border-none focus-visible:ring-0 text-sm p-3 overflow-y-auto scrollbar-thin"
                         disabled={sendMessageMutation.isPending}
                     />
-                    <div className="flex justify-end items-center p-2 bg-muted/50 rounded-b-lg border-t border-border">
+
+                    {/* Панель кнопок внутри области ввода */}
+                    <div className="flex justify-between items-center p-2 bg-muted/50 rounded-b-lg border-t border-border">
+                        <div className="flex items-center">
+                            {messages.length > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                    onClick={() => clearHistoryMutation.mutate()}
+                                    disabled={clearHistoryMutation.isPending}
+                                    title="Очистить историю"
+                                >
+                                    {clearHistoryMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                    )}
+                                </Button>
+                            )}
+                        </div>
+
                         <Button
                             onClick={handleSend}
                             disabled={!inputValue.trim() || sendMessageMutation.isPending}
@@ -153,25 +174,14 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                                 inputValue.trim() ? "bg-primary hover:bg-primary/90 shadow-md" : "bg-muted text-muted-foreground"
                             )}
                         >
-                            {sendMessageMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 ml-0.5" />}
+                            {sendMessageMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <ArrowUp className="h-4 w-4" />
+                            )}
                         </Button>
                     </div>
                 </div>
-
-                {messages.length > 0 && (
-                    <div className="flex justify-start">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-destructive transition-colors uppercase tracking-wider"
-                            onClick={() => clearHistoryMutation.mutate()}
-                            disabled={clearHistoryMutation.isPending}
-                        >
-                            <Trash2 className="h-3 w-3 mr-1.5" />
-                            Очистить историю
-                        </Button>
-                    </div>
-                )}
             </div>
         </div>
     );

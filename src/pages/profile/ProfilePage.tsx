@@ -7,8 +7,10 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut } from "lucide-react";
+import { useTranslation } from 'react-i18next';
 
 export default function ProfilePage() {
+    const { t } = useTranslation();
     const { logout } = useAuth();
     const { clearAllTabs } = useTabs();
     const queryClient = useQueryClient();
@@ -72,7 +74,7 @@ export default function ProfilePage() {
 
     return (
         <div className="max-w-2xl mx-auto p-8 w-full">
-            <h1 className="text-3xl font-bold mb-8 text-foreground">Настройки профиля</h1>
+            <h1 className="text-3xl font-bold mb-8 text-foreground">{t('profile.title')}</h1>
 
             <div className="space-y-8 bg-card p-6 rounded-lg border border-border shadow-sm">
 
@@ -92,8 +94,7 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="space-y-2">
-                        <h3 className="font-medium text-foreground">Аватар профиля</h3>
-                        <p className="text-sm text-muted-foreground max-w-sm">JPEG, PNG или WebP. Максимальный размер 10MB.</p>
+                        <h3 className="font-medium text-foreground">{t('profile.avatar')}</h3>
                         <div className="flex gap-2">
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFileSelect} />
                             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadAvatarMutation.isPending}>
@@ -114,20 +115,19 @@ export default function ProfilePage() {
                 {/* Секция данных */}
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Никнейм</label>
+                        <label className="text-sm font-medium text-foreground">{t('profile.nickname')}</label>
                         <Input
                             value={nickname}
                             onChange={(e) => setLocalNickname(e.target.value)}
-                            placeholder="Ваш никнейм"
                             className="max-w-md"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Язык интерфейса</label>
+                        <label className="text-sm font-medium text-foreground">{t('profile.interfaceLanguage')}</label>
                         <Select value={language} onValueChange={setLocalLanguage}>
                             <SelectTrigger className="max-w-md">
-                                <SelectValue placeholder="Выберите язык" />
+                                <SelectValue placeholder={t('profile.selectInterfaceLanguage')} />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ru">Русский</SelectItem>
@@ -139,7 +139,7 @@ export default function ProfilePage() {
                     <div className="pt-4 flex items-center gap-4">
                         <Button type="submit" disabled={updateProfileMutation.isPending}>
                             {updateProfileMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Сохранить изменения
+                            {t('profile.saveChanges')}
                         </Button>
                         {successMsg && (
                             <span className="text-sm text-emerald-500 flex items-center gap-1 animate-in fade-in">

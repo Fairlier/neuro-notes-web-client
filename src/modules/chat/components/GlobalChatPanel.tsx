@@ -6,7 +6,7 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Loader2, Send, Trash2, Bot, User, MessageSquare, AlertCircle } from "lucide-react";
+import {Loader2, Trash2, Bot, User, MessageSquare, AlertCircle, ArrowUp} from "lucide-react";
 import Markdown from 'react-markdown';
 
 export const GlobalChatPanel = () => {
@@ -15,7 +15,6 @@ export const GlobalChatPanel = () => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const queryClient = useQueryClient();
 
-    // Запрос профиля пользователя для получения аватарки
     const { data: profile } = useQuery({
         queryKey: ['userProfile'],
         queryFn: usersApi.getProfile,
@@ -111,7 +110,6 @@ export const GlobalChatPanel = () => {
                     }}
                 >
                     <Trash2 className="h-4 w-4" />
-                    <span className="hidden sm:inline font-medium">Очистить</span>
                 </Button>
             </div>
 
@@ -205,7 +203,7 @@ export const GlobalChatPanel = () => {
                                     input.trim() ? "bg-primary hover:bg-primary/90 shadow-md" : "bg-muted text-muted-foreground"
                                 )}
                             >
-                                {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 ml-0.5" />}
+                                {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4 ml-0.5" />}
                             </Button>
                         </div>
                     </div>

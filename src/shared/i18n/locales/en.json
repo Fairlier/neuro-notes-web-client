@@ -1,0 +1,13 @@
+{
+  "profile": {
+    "title": "Profile Settings",
+    "nickname": "Nickname",
+    "interfaceLanguage": "Interface Language",
+    "saveChanges": "Save Changes"
+  },
+  "sidebar": {
+    "globalChat": "Global Chat",
+    "workspace": "Workspace",
+    "settings": "Settings"
+  }
+}

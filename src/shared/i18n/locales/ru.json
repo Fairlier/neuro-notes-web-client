@@ -1,0 +1,15 @@
+{
+  "profile": {
+    "title": "Настройки профиля",
+    "avatar": "Аватар профиля",
+    "nickname": "Псевдоним",
+    "interfaceLanguage": "Язык интерфейса",
+    "selectInterfaceLanguage" : "Выберите язык",
+    "saveChanges": "Сохранить изменения"
+  },
+  "sidebar": {
+    "globalChat": "Общий чат",
+    "workspace": "Workspace",
+    "settings": "Настройки"
+  }
+}

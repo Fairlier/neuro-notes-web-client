@@ -305,7 +305,6 @@ export const NoteCreator = () => {
                         <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary"><Search className="h-5 w-5" /></div>
                         <div>
                             <h2 className="text-lg font-bold">Поиск заметок</h2>
-                            <p className="text-xs text-muted-foreground">Найдите нужную информацию по базе знаний</p>
                         </div>
                     </div>
 

@@ -50,10 +50,10 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                         value={filters.status || "all"}
                         onValueChange={(v) => onChange("status", v === "all" ? undefined : v as GetNotesParams['status'])}
                     >
-                        <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectTrigger className="h-9 text-xs">
                             <SelectValue placeholder="Все" />
                         </SelectTrigger>
-                        <SelectContent className="bg-background shadow-md">
+                        <SelectContent>
                             <SelectItem value="all">Все статусы</SelectItem>
                             <SelectItem value="Pending">Pending</SelectItem>
                             <SelectItem value="Raw">Raw</SelectItem>
@@ -70,10 +70,10 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                         value={filters.sourceType || "all"}
                         onValueChange={(v) => onChange("sourceType", v === "all" ? undefined : v as GetNotesParams['sourceType'])}
                     >
-                        <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectTrigger className="h-9 text-xs">
                             <SelectValue placeholder="Все" />
                         </SelectTrigger>
-                        <SelectContent className="bg-background shadow-md">
+                        <SelectContent>
                             <SelectItem value="all">Все типы</SelectItem>
                             <SelectItem value="DirectText">Текст</SelectItem>
                             <SelectItem value="AudioFile">Аудио</SelectItem>
@@ -87,10 +87,10 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                         value={filters.category || "all"}
                         onValueChange={(v) => onChange("category", v === "all" ? undefined : v as GetNotesParams['category'])}
                     >
-                        <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectTrigger className="h-9 text-xs">
                             <SelectValue placeholder="Все" />
                         </SelectTrigger>
-                        <SelectContent className="bg-background shadow-md">
+                        <SelectContent>
                             <SelectItem value="all">Все категории</SelectItem>
                             <SelectItem value="Work">Работа</SelectItem>
                             <SelectItem value="Personal">Личное</SelectItem>
@@ -127,11 +127,10 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                         value={filters.sortBy || "UpdatedAt"}
                         onValueChange={(v) => onChange("sortBy", v as GetNotesParams['sortBy'])}
                     >
-                        <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectTrigger className="h-9 text-xs">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-background shadow-md">
-                            {/* Порядок изменен для логичности (дефолтное значение первым) */}
+                        <SelectContent>
                             <SelectItem value="UpdatedAt">Дате обновления</SelectItem>
                             <SelectItem value="CreatedAt">Дате создания</SelectItem>
                             <SelectItem value="Title">Названию</SelectItem>
@@ -142,10 +141,10 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                         value={filters.sortDirection || "Descending"}
                         onValueChange={(v) => onChange("sortDirection", v as GetNotesParams['sortDirection'])}
                     >
-                        <SelectTrigger className="h-9 text-xs bg-background">
+                        <SelectTrigger className="h-9 text-xs">
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="bg-background shadow-md">
+                        <SelectContent>
                             <SelectItem value="Descending">По убыванию</SelectItem>
                             <SelectItem value="Ascending">По возрастанию</SelectItem>
                         </SelectContent>
