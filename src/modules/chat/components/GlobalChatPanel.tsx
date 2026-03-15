@@ -6,8 +6,9 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import {Loader2, Trash2, Bot, User, MessageSquare, AlertCircle, ArrowUp} from "lucide-react";
+import { Loader2, Trash2, Bot, User, MessageSquare, AlertCircle, ArrowUp } from "lucide-react";
 import Markdown from 'react-markdown';
+import type {ChatHistoryResponse} from "@/modules/chat";
 
 export const GlobalChatPanel = () => {
     const [input, setInput] = useState("");
@@ -28,13 +29,36 @@ export const GlobalChatPanel = () => {
 
     const sendMutation = useMutation({
         mutationFn: (message: string) => chatApi.sendGlobalMessage(message),
-        onSuccess: () => {
-            setInput("");
-            queryClient.invalidateQueries({ queryKey: ['global-chat'] });
+        onMutate: async (newMessage) => {
+            await queryClient.cancelQueries({ queryKey: ['global-chat'] });
+
+            const previousData = queryClient.getQueryData(['global-chat']);
+
+            queryClient.setQueryData(['global-chat'], (old: ChatHistoryResponse | undefined) => {
+                const oldMessages = old?.messages || [];
+                const optimisticMsg = {
+                    id: `temp-${Date.now()}`,
+                    role: 'User',
+                    content: newMessage,
+                };
+
+                return {
+                    ...old,
+                    messages: [...oldMessages, optimisticMsg]
+                };
+            });
+
+            return { previousData };
         },
-        onError: (err) => {
+        onError: (err, _, context) => {
             console.error("Ошибка отправки:", err);
+            if (context?.previousData) {
+                queryClient.setQueryData(['global-chat'], context.previousData);
+            }
             alert("Не удалось отправить сообщение.");
+        },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['global-chat'] });
         }
     });
 
@@ -60,7 +84,15 @@ export const GlobalChatPanel = () => {
 
     const handleSend = () => {
         if (!input.trim()) return;
-        sendMutation.mutate(input);
+
+        const messageToSend = input;
+        setInput("");
+
+        if (textareaRef.current) {
+            textareaRef.current.style.height = "60px";
+        }
+
+        sendMutation.mutate(messageToSend);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -92,29 +124,21 @@ export const GlobalChatPanel = () => {
 
     return (
         <div className="flex flex-col h-full bg-background relative w-full text-foreground overflow-hidden">
-            <div className="h-20 border-b border-border flex items-center justify-between px-4 sm:px-8 flex-shrink-0 bg-background/80 backdrop-blur-md z-10 sticky top-0">
-                <div className="flex items-center gap-4">
-                    <div className="h-11 w-11 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                        <MessageSquare className="h-5 w-5" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold leading-none">Общий чат</h1>
+            <div className="h-20 border-b border-border flex-shrink-0 bg-background/80 backdrop-blur-md z-10 sticky top-0 w-full">
+                <div className="h-full px-4 sm:px-8 max-w-8xl mx-auto flex items-center">
+                    <div className="flex items-center gap-4 -ml-1.5">
+                        <div className="h-11 w-11 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shrink-0">
+                            <MessageSquare className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-bold leading-none">Общий чат</h1>
+                        </div>
                     </div>
                 </div>
-
-                <Button
-                    variant="ghost"
-                    className="text-muted-foreground hover:text-destructive gap-2 rounded-xl px-4 h-10"
-                    onClick={() => {
-                        if (confirm("Вы уверены, что хотите очистить историю переписки?")) clearMutation.mutate();
-                    }}
-                >
-                    <Trash2 className="h-4 w-4" />
-                </Button>
             </div>
 
-            <ScrollArea className="flex-1 px-4 sm:px-8 py-6">
-                <div className="max-w-3xl mx-auto flex flex-col gap-6 pb-4">
+            <ScrollArea className="flex-1 h-full">
+                <div className="px-4 sm:px-8 py-6 max-w-8xl mx-auto flex flex-col gap-6">
                     {isLoading ? (
                         <div className="flex justify-center py-20">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -131,10 +155,10 @@ export const GlobalChatPanel = () => {
                         messages.map((msg) => {
                             const isUser = msg.role === 'User';
                             return (
-                                <div key={msg.id} className={cn("flex gap-4", isUser ? "flex-row-reverse" : "")}>
+                                <div key={msg.id} className={cn("flex gap-3 items-start", isUser ? "flex-row-reverse" : "")}>
                                     <div className={cn(
-                                        "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border mt-1 overflow-hidden",
-                                        isUser ? "bg-muted border-border" : "bg-primary border-primary text-primary-foreground shadow-md"
+                                        "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border overflow-hidden",
+                                        isUser ? "bg-muted border-border" : "bg-primary border-primary text-primary-foreground shadow-sm"
                                     )}>
                                         {isUser ? (
                                             profile?.avatarUrl ? (
@@ -148,10 +172,10 @@ export const GlobalChatPanel = () => {
                                     </div>
 
                                     <div className={cn(
-                                        "rounded-2xl px-5 py-3 text-sm leading-relaxed max-w-[85%] sm:max-w-[75%]",
+                                        "px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[85%] sm:max-w-[75%] shadow-sm",
                                         isUser
-                                            ? "bg-muted text-foreground rounded-tr-sm"
-                                            : "bg-card border border-border text-card-foreground shadow-sm rounded-tl-sm"
+                                            ? "bg-muted text-foreground rounded-tr-none"
+                                            : "bg-card border border-border text-card-foreground rounded-tl-none"
                                     )}>
                                         {isUser ? msg.content : (
                                             <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -165,11 +189,11 @@ export const GlobalChatPanel = () => {
                     )}
 
                     {sendMutation.isPending && (
-                        <div className="flex gap-4">
-                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 mt-1">
+                        <div className="flex gap-3 items-start">
+                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 shadow-sm">
                                 <Bot className="h-4 w-4 text-primary-foreground" />
                             </div>
-                            <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-5 py-4 shadow-sm">
+                            <div className="bg-card border border-border rounded-2xl rounded-tl-none px-5 py-4 shadow-sm">
                                 <div className="flex gap-1">
                                     <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                                     <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
@@ -178,13 +202,15 @@ export const GlobalChatPanel = () => {
                             </div>
                         </div>
                     )}
-                    <div ref={scrollRef} />
+
+                    <div ref={scrollRef} className="h-32 sm:h-36 shrink-0" />
                 </div>
             </ScrollArea>
 
-            <div className="p-4 sm:p-6 border-t border-border bg-background">
-                <div className="max-w-3xl mx-auto">
-                    <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm transition-all overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/20">
+            {/* Плавающая область ввода поверх чата */}
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 sm:px-8 sm:pb-8 pt-1 bg-gradient-to-t from-background via-background/80 to-transparent z-20 pointer-events-none">
+                <div className="max-w-5xl mx-auto pointer-events-auto">
+                    <div className="relative bg-background rounded-xl border border-border shadow-xl transition-all overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/20">
                         <Textarea
                             ref={textareaRef}
                             value={input}
@@ -193,7 +219,20 @@ export const GlobalChatPanel = () => {
                             placeholder="Задайте вопрос по базе знаний..."
                             className="w-full min-h-[60px] resize-none bg-transparent border-none focus-visible:ring-0 text-base p-4 overflow-y-auto scrollbar-thin"
                         />
-                        <div className="flex justify-end items-center p-2 bg-muted/50 rounded-b-lg border-t border-border">
+                        <div className="flex justify-between items-center p-2 bg-muted/30 rounded-b-xl border-t border-border">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                onClick={() => {
+                                    if (confirm("Вы уверены, что хотите очистить историю переписки?")) clearMutation.mutate();
+                                }}
+                                disabled={messages.length === 0 || clearMutation.isPending}
+                                title="Очистить историю"
+                            >
+                                {clearMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+
                             <Button
                                 onClick={handleSend}
                                 disabled={sendMutation.isPending || !input.trim()}
