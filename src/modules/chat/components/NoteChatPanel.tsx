@@ -112,8 +112,12 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                                 const isUser = msg.role.toLowerCase() === 'user';
                                 return (
                                     <div key={msg.id || i} className={cn("flex flex-col gap-1 max-w-[90%] break-words", isUser ? "ml-auto items-end" : "mr-auto items-start")}>
-                                        <div className={cn("px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap w-fit shadow-sm",
-                                            isUser ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none border border-border")}>
+                                        <div className={cn(
+                                            "px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap w-fit shadow-sm",
+                                            isUser
+                                                ? "bg-muted text-foreground rounded-tr-none"
+                                                : "bg-card border border-border text-card-foreground rounded-tl-none"
+                                        )}>
                                             {msg.content}
                                         </div>
                                     </div>
@@ -144,25 +148,26 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                         disabled={sendMessageMutation.isPending}
                     />
 
-                    {/* Панель кнопок внутри области ввода */}
                     <div className="flex justify-between items-center p-2 bg-muted/50 rounded-b-lg border-t border-border">
                         <div className="flex items-center">
-                            {messages.length > 0 && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                    onClick={() => clearHistoryMutation.mutate()}
-                                    disabled={clearHistoryMutation.isPending}
-                                    title="Очистить историю"
-                                >
-                                    {clearHistoryMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Trash2 className="h-4 w-4" />
-                                    )}
-                                </Button>
-                            )}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                onClick={() => {
+                                    if (confirm("Вы уверены, что хотите очистить историю переписки?")) {
+                                        clearHistoryMutation.mutate();
+                                    }
+                                }}
+                                disabled={messages.length === 0 || clearHistoryMutation.isPending}
+                                title="Очистить историю"
+                            >
+                                {clearHistoryMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                )}
+                            </Button>
                         </div>
 
                         <Button
