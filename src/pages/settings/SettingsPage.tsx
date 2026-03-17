@@ -9,9 +9,21 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Loader2, CheckCircle2, Cpu, KeyRound, Plus, Trash2, Settings2 } from "lucide-react";
+import {
+    Loader2,
+    CheckCircle2,
+    Cpu,
+    KeyRound,
+    Plus,
+    Trash2,
+    Settings2,
+    Languages,
+    Sparkles,
+    RefreshCcw,
+    Settings
+} from "lucide-react";
 
-type OperationKey = 'transcription' | 'structuring' | 'summarization' | 'globalChat' | 'noteChat';
+const BUTTON_CLASS = "w-full sm:w-[220px] h-10 flex items-center justify-center gap-2 transition-all shrink-0";
 
 interface SettingsFormProps {
     initialData: UserAIProfileResponse;
@@ -22,6 +34,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<UserAIProfileResponse>(initialData);
     const [successMsg, setSuccessMsg] = useState("");
+    const [resetMsg, setResetMsg] = useState("");
 
     const [selectedProvider, setSelectedProvider] = useState<string>("");
     const [newSettingKey, setNewSettingKey] = useState("");
@@ -39,6 +52,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userAiProfile'] });
             setSuccessMsg("Настройки успешно сохранены");
+            setResetMsg("");
             setTimeout(() => setSuccessMsg(""), 3000);
         }
     });
@@ -47,8 +61,9 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
         mutationFn: usersApi.resetAiProfile,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userAiProfile'] });
-            setSuccessMsg("Настройки сброшены");
-            setTimeout(() => setSuccessMsg(""), 3000);
+            setResetMsg("Настройки успешно сброшены");
+            setSuccessMsg("");
+            setTimeout(() => setResetMsg(""), 3000);
         }
     });
 
@@ -57,112 +72,73 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
         updateProfileMutation.mutate(formData);
     };
 
-    const handleReset = () => {
-        if (window.confirm("Вы уверены, что хотите сбросить настройки ИИ?")) {
-            resetProfileMutation.mutate();
-        }
-    };
-
-    const updateOperationSetting = (operation: OperationKey, field: keyof AIOperationSettingsDto, value: string | boolean) => {
+    const updateOperationSetting = (operation: keyof UserAIProfileResponse, field: keyof AIOperationSettingsDto, value: string | boolean) => {
         setFormData(prev => ({
             ...prev,
             [operation]: {
-                ...(prev[operation] || { useCustomPrompt: false }),
+                ...(prev[operation as keyof UserAIProfileResponse] as AIOperationSettingsDto || { useCustomPrompt: false }),
                 [field]: value
             }
         }));
     };
 
-    const addProviderSetting = () => {
-        if (!selectedProvider || !newSettingKey) return;
-        setFormData(prev => {
-            const currentSettings = prev.providerSettings || {};
-            const providerDict = currentSettings[selectedProvider] || {};
-            return {
-                ...prev,
-                providerSettings: {
-                    ...currentSettings,
-                    [selectedProvider]: { ...providerDict, [newSettingKey]: newSettingValue }
-                }
-            };
-        });
-        setNewSettingKey("");
-        setNewSettingValue("");
-    };
-
-    const removeProviderSetting = (provider: string, key: string) => {
-        setFormData(prev => {
-            const currentSettings = { ...(prev.providerSettings || {}) };
-            if (currentSettings[provider]) {
-                const providerDict = { ...currentSettings[provider] };
-                delete providerDict[key];
-                currentSettings[provider] = providerDict;
-            }
-            return { ...prev, providerSettings: currentSettings };
-        });
-    };
-
-    const renderOperationSettings = (
-        title: string,
-        operationKey: OperationKey,
-        providerKey: keyof UserAIProfileResponse,
-        providerList: string[] = []
-    ) => {
-        const opData = formData[operationKey] as AIOperationSettingsDto | undefined;
-        const isCustom = opData?.useCustomPrompt || false;
-
+    const renderOperationItem = (title: string, opKey: keyof UserAIProfileResponse, providers: string[]) => {
+        const opData = formData[opKey] as AIOperationSettingsDto || {};
         return (
-            <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-4">
-                <div className="flex items-center justify-between border-b border-border/50 pb-2 mb-2">
-                    <h4 className="font-semibold text-foreground flex items-center gap-2">
-                        <Settings2 className="h-4 w-4 text-muted-foreground" /> {title}
-                    </h4>
+            <div className="p-5 rounded-2xl border border-border bg-muted/10 space-y-4">
+                <div className="flex items-center gap-2 border-b border-border/40 pb-3 mb-1">
+                    <Settings2 className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-bold uppercase tracking-wider text-foreground">{title}</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Провайдер</label>
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center gap-2 ml-1">
+                            <Cpu className="h-3.5 w-3.5 text-primary" />
+                            Провайдер
+                        </label>
                         <Select
-                            value={(formData[providerKey] as string) || ""}
-                            onValueChange={(v) => setFormData({...formData, [providerKey]: v})}
+                            value={(formData[opKey === 'transcription' ? 'transcriptionProvider' : opKey === 'structuring' ? 'structureProvider' : opKey === 'summarization' ? 'summaryProvider' : opKey === 'globalChat' ? 'globalChatProvider' : 'noteChatProvider' as keyof UserAIProfileResponse] as string) || ""}
+                            onValueChange={(v) => setFormData({...formData, [opKey === 'transcription' ? 'transcriptionProvider' : opKey === 'structuring' ? 'structureProvider' : opKey === 'summarization' ? 'summaryProvider' : opKey === 'globalChat' ? 'globalChatProvider' : 'noteChatProvider' as keyof UserAIProfileResponse]: v})}
                         >
-                            <SelectTrigger className="bg-background">
+                            <SelectTrigger className="bg-muted/20 border-border/50 h-11">
                                 <SelectValue placeholder="По умолчанию" />
                             </SelectTrigger>
                             <SelectContent>
-                                {providerList.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                {providers.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Свой язык</label>
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold flex items-center gap-2 ml-1">
+                            <Languages className="h-3.5 w-3.5 text-primary" />
+                            Язык (ISO)
+                        </label>
                         <Input
-                            value={opData?.targetLanguage || ""}
-                            onChange={(e) => updateOperationSetting(operationKey, 'targetLanguage', e.target.value.toLowerCase())}
+                            value={opData.targetLanguage || ""}
+                            onChange={(e) => updateOperationSetting(opKey, 'targetLanguage', e.target.value.toLowerCase())}
                             maxLength={2}
-                            placeholder="ru"
-                            className="bg-background font-mono"
+                            className="bg-muted/20 border-border/50 h-11 font-mono lowercase"
                         />
                     </div>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-border/50">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                <div className="space-y-3 pt-2">
+                    <label className="flex items-center gap-2 cursor-pointer w-fit">
                         <input
                             type="checkbox"
-                            checked={isCustom}
-                            onChange={(e) => updateOperationSetting(operationKey, 'useCustomPrompt', e.target.checked)}
-                            className="rounded border-border text-primary"
+                            checked={opData.useCustomPrompt || false}
+                            onChange={(e) => updateOperationSetting(opKey, 'useCustomPrompt', e.target.checked)}
+                            className="h-4 w-4 rounded border-border text-primary"
                         />
-                        <span className="text-sm font-medium">Кастомный промт</span>
+                        <span className="text-sm font-medium text-muted-foreground">Кастомный промт</span>
                     </label>
 
-                    {isCustom && (
+                    {opData.useCustomPrompt && (
                         <Textarea
-                            value={opData?.customPrompt || ""}
-                            onChange={(e) => updateOperationSetting(operationKey, 'customPrompt', e.target.value)}
-                            className="min-h-[100px] bg-background text-sm"
+                            value={opData.customPrompt || ""}
+                            onChange={(e) => updateOperationSetting(opKey, 'customPrompt', e.target.value)}
+                            className="min-h-[100px] bg-muted/20 border-border/50 resize-none"
                         />
                     )}
                 </div>
@@ -171,91 +147,175 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
     };
 
     return (
-        <form onSubmit={handleSave} className="flex flex-col lg:flex-row gap-8 items-start relative">
-            <div className="flex-1 space-y-8 bg-card p-4 sm:p-8 rounded-lg border border-border shadow-sm w-full">
-                <section className="space-y-4">
-                    <h3 className="text-lg font-semibold border-b border-border pb-2">Общие параметры</h3>
-                    <div className="p-4 rounded-lg border border-border bg-muted/20 space-y-4">
-                        <div className="space-y-1.5 max-w-sm">
-                            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Глобальный язык</label>
-                            <Input
-                                value={formData.aiOperationLanguage}
-                                onChange={(e) => setFormData({...formData, aiOperationLanguage: e.target.value.toLowerCase()})}
-                                maxLength={2}
-                                className="bg-background font-mono uppercase"
-                            />
+        <form onSubmit={handleSave} className="space-y-6 w-full pb-10">
+
+            {/* 1. ОБЩИЕ */}
+            <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
+                    <Settings2 className="h-4 w-4 text-primary" />
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Общие параметры</h2>
+                </div>
+                <div className="p-6">
+                    <div className="space-y-2 max-w-[200px]">
+                        <label className="text-sm font-semibold flex items-center gap-2 ml-1">
+                            <Languages className="h-3.5 w-3.5 text-primary" />
+                            Глобальный язык
+                        </label>
+                        <Input
+                            value={formData.aiOperationLanguage}
+                            onChange={(e) => setFormData({...formData, aiOperationLanguage: e.target.value.toLowerCase()})}
+                            maxLength={2}
+                            className="bg-muted/20 border-border/50 h-11 font-mono lowercase"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* 2. ОПЕРАЦИИ */}
+            <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Настройка операций</h2>
+                </div>
+                <div className="p-6 space-y-5">
+                    {renderOperationItem("Транскрибация", "transcription", systemConfig.providers.transcription)}
+                    {renderOperationItem("Структурирование", "structuring", systemConfig.providers.structure)}
+                    {renderOperationItem("Саммаризация", "summarization", systemConfig.providers.summary)}
+                    {renderOperationItem("Общий чат", "globalChat", systemConfig.providers.chat)}
+                    {renderOperationItem("Чат по заметке", "noteChat", systemConfig.providers.chat)}
+                </div>
+            </section>
+
+            {/* 3. КЛЮЧИ */}
+            <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
+                    <KeyRound className="h-4 w-4 text-primary" />
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Ключи провайдеров</h2>
+                </div>
+                <div className="p-6 space-y-6">
+                    {/* Форма добавления */}
+                    <div className="flex flex-col sm:flex-row gap-3 items-end bg-muted/10 p-5 rounded-2xl">
+                        <div className="w-full sm:flex-1 space-y-2">
+                            <label className="text-sm font-semibold ml-1">Провайдер</label>
+                            <Select value={selectedProvider} onValueChange={setSelectedProvider}>
+                                <SelectTrigger className="bg-background h-11"><SelectValue placeholder="Выберите провайдера" /></SelectTrigger>
+                                <SelectContent>{allProviders.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </div>
+                        <div className="w-full sm:flex-1 space-y-2">
+                            <label className="text-sm font-semibold ml-1">Ключ</label>
+                            <Input value={newSettingKey} onChange={e => setNewSettingKey(e.target.value)} className="bg-background h-11"/>
+                        </div>
+                        <div className="w-full sm:flex-[2] space-y-2">
+                            <label className="text-sm font-semibold ml-1">Значение</label>
+                            <div className="flex gap-2">
+                                <Input value={newSettingValue} onChange={e => setNewSettingValue(e.target.value)} className="bg-background h-11"/>
+                                <Button type="button" size="icon" className="h-11 w-11 shrink-0" onClick={() => {
+                                    if (!selectedProvider || !newSettingKey) return;
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        providerSettings: {
+                                            ...(prev.providerSettings || {}),
+                                            [selectedProvider]: { ...(prev.providerSettings?.[selectedProvider] || {}), [newSettingKey]: newSettingValue }
+                                        }
+                                    }));
+                                    setNewSettingKey(""); setNewSettingValue("");
+                                }} disabled={!selectedProvider || !newSettingKey}><Plus className="h-4 w-4" /></Button>
+                            </div>
                         </div>
                     </div>
-                </section>
 
-                <section className="space-y-4">
-                    <h3 className="text-lg font-semibold border-b border-border pb-2">Операции и Промты</h3>
-                    <div className="grid grid-cols-1 gap-6">
-                        {renderOperationSettings("Транскрибация", "transcription", "transcriptionProvider", systemConfig.providers.transcription)}
-                        {renderOperationSettings("Структурирование", "structuring", "structureProvider", systemConfig.providers.structure)}
-                        {renderOperationSettings("Саммаризация", "summarization", "summaryProvider", systemConfig.providers.summary)}
-                        {renderOperationSettings("Общий чат (Global)", "globalChat", "globalChatProvider", systemConfig.providers.chat)}
-                        {renderOperationSettings("Чат по заметке (Note)", "noteChat", "noteChatProvider", systemConfig.providers.chat)}
-                    </div>
-                </section>
-
-                {/* Настройки провайдеров (API ключи) */}
-                <section className="space-y-4">
-                    <div className="flex items-center gap-2 border-b border-border pb-2">
-                        <KeyRound className="h-5 w-5 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">Настройки провайдеров</h3>
-                    </div>
-                    <div className="bg-muted/20 border border-border rounded-lg p-4 space-y-6">
-                        <div className="flex flex-col sm:flex-row gap-3 items-end">
-                            <div className="w-full sm:w-1/4">
-                                <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-                                    <SelectTrigger className="bg-background"><SelectValue placeholder="Провайдер" /></SelectTrigger>
-                                    <SelectContent>
-                                        {allProviders.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Input value={newSettingKey} onChange={e => setNewSettingKey(e.target.value)} placeholder="Key" className="sm:w-1/4 bg-background"/>
-                            <div className="flex gap-2 w-full sm:w-2/4">
-                                <Input value={newSettingValue} onChange={e => setNewSettingValue(e.target.value)} placeholder="Value" className="bg-background"/>
-                                <Button type="button" onClick={addProviderSetting} disabled={!selectedProvider || !newSettingKey}><Plus className="h-4 w-4" /></Button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            {Object.entries(formData.providerSettings || {}).map(([providerName, settingsObj]) => (
-                                <div key={providerName} className="space-y-2">
-                                    <h5 className="text-sm font-bold bg-muted/50 px-2 py-1 rounded-md inline-block">{providerName}</h5>
+                    {/* Список ключей */}
+                    <div className="space-y-4">
+                        {Object.entries(formData.providerSettings || {}).map(([providerName, settingsObj]) => (
+                            <div key={providerName} className="space-y-2">
+                                <span className="text-sm font-bold text-primary/80 tracking-tight px-1">{providerName}</span>
+                                <div className="divide-y divide-border/50 border border-border/50 rounded-xl overflow-hidden">
                                     {Object.entries(settingsObj).map(([k, v]) => (
-                                        <div key={k} className="flex items-center justify-between bg-background border border-border p-2 rounded-md text-sm">
-                                            <span className="truncate"><span className="opacity-50">{k}:</span> {v}</span>
-                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeProviderSetting(providerName, k)}>
-                                                <Trash2 className="h-3 w-3" />
+                                        <div key={k} className="flex items-center justify-between bg-background px-4 py-3 group">
+                                            <div className="flex gap-2 items-center min-w-0">
+                                                <span className="text-muted-foreground font-medium text-sm">{k}:</span>
+                                                <span className="text-foreground truncate font-mono text-sm">{v}</span>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => {
+                                                    const newSettings = { ...formData.providerSettings };
+                                                    const providerDict = { ...newSettings[providerName] };
+                                                    delete providerDict[k];
+                                                    newSettings[providerName] = providerDict;
+                                                    setFormData({...formData, providerSettings: newSettings});
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
                                     ))}
                                 </div>
-                            ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* 4. ДЕЙСТВИЯ */}
+            <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="p-6">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className={`${BUTTON_CLASS} text-destructive hover:bg-destructive/10 hover:text-destructive justify-start px-4`}
+                            onClick={() => { if(window.confirm("Сбросить настройки?")) resetProfileMutation.mutate(); }}
+                            disabled={resetProfileMutation.isPending}
+                        >
+                            {resetProfileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+                            Сбросить настройки
+                        </Button>
+
+                        <Button
+                            type="submit"
+                            className={`${BUTTON_CLASS} shadow-md shadow-primary/10`}
+                            disabled={updateProfileMutation.isPending}
+                        >
+                            {updateProfileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                            Сохранить настройки
+                        </Button>
+                    </div>
+                </div>
+            </section>
+
+            {/* 5. УВЕДОМЛЕНИЯ (отдельная карточка под действиями) */}
+            {(successMsg || resetMsg) && (
+                <section className={`
+                    border rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4
+                    ${successMsg ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-destructive/5 border-destructive/20'}
+                `}>
+                    <div className="p-6">
+                        <div className="flex items-center justify-center gap-3">
+                            {successMsg ? (
+                                <>
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                    <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                                        {successMsg}
+                                    </span>
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCcw className="h-5 w-5 text-destructive" />
+                                    <span className="text-base font-semibold text-destructive">
+                                        {resetMsg}
+                                    </span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </section>
-            </div>
+            )}
 
-            {/* Стики-бар управления */}
-            <div className="w-full lg:w-80 shrink-0 sticky top-4 z-10">
-                <div className="bg-card p-6 rounded-lg border border-border shadow-sm space-y-4">
-                    <Button type="submit" className="w-full" disabled={updateProfileMutation.isPending}>
-                        {updateProfileMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        Сохранить настройки
-                    </Button>
-                    <Button type="button" variant="outline" onClick={handleReset} className="w-full text-destructive" disabled={resetProfileMutation.isPending}>
-                        Сбросить всё
-                    </Button>
-                    {successMsg && <div className="text-sm text-emerald-500 bg-emerald-500/10 p-3 rounded-md border border-emerald-500/20 flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4" /> {successMsg}
-                    </div>}
-                </div>
-            </div>
         </form>
     );
 }
@@ -272,23 +332,22 @@ export default function SettingsPage() {
     });
 
     if (isProfileLoading || isConfigLoading) {
-        return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+        return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     }
 
     if (!aiProfile || !systemConfig) return null;
 
     return (
-        <div className="max-w-7xl mx-auto p-4 sm:p-8 w-full h-full relative overflow-y-auto">
-            <div className="flex items-center gap-3 mb-8">
-                <Cpu className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl font-bold">Настройки ИИ</h1>
+        <div className="min-h-screen w-full bg-background selection:bg-primary/10 py-12 px-4 overflow-y-auto">
+            <div className="max-w-3xl mx-auto space-y-6">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <div className="p-2.5 bg-primary/10 rounded-xl">
+                        <Settings className="h-7 w-7 text-primary" />
+                    </div>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Настройки ИИ</h1>
+                </div>
+                <SettingsForm initialData={aiProfile} systemConfig={systemConfig} key={aiProfile.aiOperationLanguage} />
             </div>
-
-            <SettingsForm
-                initialData={aiProfile}
-                systemConfig={systemConfig}
-                key={aiProfile.aiOperationLanguage + aiProfile.transcriptionProvider}
-            />
         </div>
     );
 }

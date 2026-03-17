@@ -6,7 +6,7 @@ import { usersApi } from "@/modules/users";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut } from "lucide-react";
+import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut, Settings, Camera, ShieldAlert } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 
 export default function ProfilePage() {
@@ -28,14 +28,14 @@ export default function ProfilePage() {
     const nickname = localNickname ?? profile?.nickname ?? "";
     const language = localLanguage ?? profile?.interfaceLanguage ?? "ru";
 
+    const BUTTON_CLASS = "w-full sm:w-[220px] h-10 flex items-center justify-center gap-2 transition-all shrink-0";
+
     const updateProfileMutation = useMutation({
         mutationFn: usersApi.updateProfile,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userProfile'] });
-
             setLocalNickname(null);
             setLocalLanguage(null);
-
             setSuccessMsg("Профиль успешно обновлен");
             setTimeout(() => setSuccessMsg(""), 3000);
         }
@@ -56,109 +56,165 @@ export default function ProfilePage() {
         updateProfileMutation.mutate({ nickname, interfaceLanguage: language });
     };
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            uploadAvatarMutation.mutate(file);
-        }
-    };
-
-    const handleLogout = () => {
-        clearAllTabs();
-        logout();
-    };
-
     if (isLoading) {
-        return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        );
     }
 
     return (
-        <div className="max-w-2xl mx-auto p-8 w-full">
-            <h1 className="text-3xl font-bold mb-8 text-foreground">{t('profile.title')}</h1>
+        <div className="min-h-screen w-full bg-background selection:bg-primary/10 py-12 px-4 overflow-y-auto">
+            <div className="max-w-xl mx-auto space-y-6">
 
-            <div className="space-y-8 bg-card p-6 rounded-lg border border-border shadow-sm">
+                {/* ГЛАВНЫЙ ЗАГОЛОВОК */}
+                <div className="flex items-center justify-center gap-3 mb-4">
+                    <div className="p-2.5 bg-primary/10 rounded-xl">
+                        <User className="h-7 w-7 text-primary" />
+                    </div>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {t('profile.title')}
+                    </h1>
+                </div>
 
-                {/* Секция Аватара */}
-                <div className="flex items-center gap-6">
-                    <div className="h-24 w-24 rounded-full bg-muted border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
-                        {profile?.avatarUrl ? (
-                            <img src={profile.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-                        ) : (
-                            <User className="h-10 w-10 text-muted-foreground" />
-                        )}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-white hover:text-white hover:bg-white/20" onClick={() => fileInputRef.current?.click()}>
-                                <Upload className="h-4 w-4" />
-                            </Button>
-                        </div>
+                {/* БЛОК 1: Фото профиля */}
+                <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
+                        <Camera className="h-4 w-4 text-primary" />
+                        <h2 className="text-sm font-bold tracking-wider text-muted-foreground uppercase">
+                            {t('profile.avatar')}
+                        </h2>
                     </div>
 
-                    <div className="space-y-2">
-                        <h3 className="font-medium text-foreground">{t('profile.avatar')}</h3>
-                        <div className="flex gap-2">
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleFileSelect} />
-                            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadAvatarMutation.isPending}>
-                                {uploadAvatarMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
-                                Загрузить
+                    <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-8">
+                        {/* Аватар без наложений */}
+                        <div className="h-32 w-32 rounded-3xl bg-muted border-2 border-border flex items-center justify-center overflow-hidden shadow-inner transition-all hover:border-primary/30">
+                            {profile?.avatarUrl ? (
+                                <img src={profile.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                            ) : (
+                                <User className="h-16 w-16 text-muted-foreground/30" />
+                            )}
+                        </div>
+
+                        {/* Кнопки в вертикальном стеке одинакового размера */}
+                        <div className="flex flex-col gap-3 w-full sm:w-auto">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="image/*"
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) uploadAvatarMutation.mutate(file);
+                                }}
+                            />
+                            <Button
+                                variant="outline"
+                                className={`${BUTTON_CLASS} border-dashed`}
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadAvatarMutation.isPending}
+                            >
+                                {uploadAvatarMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                                Изменить фото
                             </Button>
                             {profile?.avatarUrl && (
-                                <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => deleteAvatarMutation.mutate()} disabled={deleteAvatarMutation.isPending}>
-                                    <Trash2 className="h-4 w-4 mr-2" /> Удалить
+                                <Button
+                                    variant="ghost"
+                                    className={`${BUTTON_CLASS} text-destructive hover:bg-destructive/10 hover:text-destructive`}
+                                    onClick={() => deleteAvatarMutation.mutate()}
+                                    disabled={deleteAvatarMutation.isPending}
+                                >
+                                    <Trash2 className="h-4 w-4" /> Удалить фото
                                 </Button>
                             )}
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div className="h-px bg-border w-full" />
-
-                {/* Секция данных */}
-                <form onSubmit={handleSaveProfile} className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">{t('profile.nickname')}</label>
-                        <Input
-                            value={nickname}
-                            onChange={(e) => setLocalNickname(e.target.value)}
-                            className="max-w-md"
-                        />
+                {/* БЛОК 2: Настройки пользователя */}
+                <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
+                        <Settings className="h-4 w-4 text-primary" />
+                        <h2 className="text-sm font-bold tracking-wider text-muted-foreground uppercase">
+                            Настройки пользователя
+                        </h2>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">{t('profile.interfaceLanguage')}</label>
-                        <Select value={language} onValueChange={setLocalLanguage}>
-                            <SelectTrigger className="max-w-md">
-                                <SelectValue placeholder={t('profile.selectInterfaceLanguage')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ru">Русский</SelectItem>
-                                <SelectItem value="en">English</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <form onSubmit={handleSaveProfile} className="p-6 space-y-6">
+                        <div className="grid gap-5">
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold flex items-center gap-2 ml-1">
+                                    <User className="h-3.5 w-3.5 text-primary" />
+                                    {t('profile.nickname')}
+                                </label>
+                                <Input
+                                    className="h-11 bg-muted/20 border-border/50 focus-visible:ring-primary"
+                                    value={nickname}
+                                    onChange={(e) => setLocalNickname(e.target.value)}
+                                />
+                            </div>
 
-                    <div className="pt-4 flex items-center gap-4">
-                        <Button type="submit" disabled={updateProfileMutation.isPending}>
-                            {updateProfileMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            {t('profile.saveChanges')}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold flex items-center gap-2 ml-1">
+                                    <Settings className="h-3.5 w-3.5 text-primary" />
+                                    {t('profile.interfaceLanguage')}
+                                </label>
+                                <Select value={language} onValueChange={setLocalLanguage}>
+                                    <SelectTrigger className="h-11 bg-muted/20 border-border/50">
+                                        <SelectValue placeholder={t('profile.selectInterfaceLanguage')} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ru">Русский</SelectItem>
+                                        <SelectItem value="en">English</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 flex items-center justify-between gap-4 border-t border-border/40">
+                            <div className="flex-1">
+                                {successMsg && (
+                                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 animate-in fade-in slide-in-from-left-4">
+                                        <CheckCircle2 className="h-4 w-4" />
+                                        <span className="text-sm font-medium">{successMsg}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <Button
+                                type="submit"
+                                className={`${BUTTON_CLASS} shadow-md shadow-primary/10`}
+                                disabled={updateProfileMutation.isPending}
+                            >
+                                {updateProfileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                {t('profile.saveChanges')}
+                            </Button>
+                        </div>
+                    </form>
+                </section>
+
+                {/* БЛОК 3: Завершение сеанса */}
+                <section className="bg-destructive/[0.03] border border-destructive/10 rounded-2xl p-6 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-destructive/10 rounded-2xl text-destructive">
+                                <ShieldAlert className="h-6 w-6" />
+                            </div>
+                            <div className="text-center sm:text-left">
+                                <h3 className="text-lg font-bold text-foreground leading-tight">Завершение сеанса</h3>
+                                <p className="text-xs text-muted-foreground mt-1 text-balance">Выход из аккаунта на этом устройстве</p>
+                            </div>
+                        </div>
+                        <Button
+                            variant="destructive"
+                            onClick={() => { clearAllTabs(); logout(); }}
+                            className={`${BUTTON_CLASS} shadow-lg shadow-destructive/20`}
+                        >
+                            <LogOut className="h-4 w-4" />
+                            Выйти из аккаунта
                         </Button>
-                        {successMsg && (
-                            <span className="text-sm text-emerald-500 flex items-center gap-1 animate-in fade-in">
-                                <CheckCircle2 className="h-4 w-4" /> {successMsg}
-                            </span>
-                        )}
                     </div>
-                </form>
-
-                <div className="h-px bg-border w-full" />
-
-                {/* Секция выхода из аккаунта */}
-                <div className="space-y-3">
-                    <h3 className="font-medium text-destructive">Управление аккаунтом</h3>
-                    <Button variant="destructive" onClick={handleLogout} className="w-fit">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Выйти из аккаунта
-                    </Button>
-                </div>
+                </section>
 
             </div>
         </div>
