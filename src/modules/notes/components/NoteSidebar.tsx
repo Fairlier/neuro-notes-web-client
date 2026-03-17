@@ -60,17 +60,20 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                 old ? { ...old, isProcessing: true, status: 'Pending' } : undefined
             );
 
-            queryClient.setQueriesData<{ notes: NoteListItemDto[] }>(
-                { queryKey: ['notes'] },
+            queryClient.setQueriesData<{ pages: { notes: NoteListItemDto[] }[]; pageParams: number[] }>(
+                { queryKey: ['notes'], exact: false },
                 (old) => {
-                    if (!old?.notes) return old;
+                    if (!old?.pages) return old;
                     return {
                         ...old,
-                        notes: old.notes.map(n =>
-                            n.id === note.id
-                                ? { ...n, isProcessing: true, status: 'Pending' as NoteStatus }
-                                : n
-                        )
+                        pages: old.pages.map(page => ({
+                            ...page,
+                            notes: page.notes.map(n =>
+                                n.id === note.id
+                                    ? { ...n, isProcessing: true, status: 'Pending' as NoteStatus }
+                                    : n
+                            )
+                        }))
                     };
                 }
             );
