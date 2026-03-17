@@ -304,7 +304,10 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                         variant="ghost"
                         onClick={handleThemeToggle}
                         disabled={updateThemeMutation.isPending}
-                        className="transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center justify-center h-10 w-10 p-0 mx-auto"
+                        className={cn(
+                            "transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center justify-center h-10 w-10 p-0",
+                            isOpen ? "" : "mx-auto"
+                        )}
                         title="Смена темы"
                     >
                         {theme === 'dark' ? <Moon className="h-5 w-5 shrink-0" /> : <Sun className="h-5 w-5 shrink-0" />}
@@ -317,25 +320,45 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     onClick={() => navigate('/profile')}
                     className={cn(
                         "hover:bg-background transition-all duration-300 group min-w-0 rounded-lg flex items-center",
-                        isOpen ? "justify-start w-full h-12 gap-3 px-2" : "justify-center p-0 w-10 h-10 gap-0 mx-auto"
+                        isOpen ? "justify-between w-full h-12 px-0" : "justify-center p-0 w-10 h-10 gap-0 mx-auto"
                     )}
                 >
-                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 text-primary-foreground font-semibold text-xs shadow-sm overflow-hidden">
-                        {isProfileLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin opacity-50" />
-                        ) : profile?.avatarUrl ? (
-                            <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
-                        ) : (
-                            displayName.charAt(0).toUpperCase()
-                        )}
-                    </div>
-                    {isOpen && (
+                    {isOpen ? (
                         <>
-                            <div className="flex flex-col items-start text-left overflow-hidden min-w-0 flex-1 animate-in fade-in duration-200">
-                                <span className="text-sm font-medium text-foreground truncate w-full">{displayName}</span>
+                            {/* Левая часть с аватаркой и именем */}
+                            <div className="flex items-center flex-1 min-w-0">
+                                {/* Контейнер 40x40 для аватарки - выравнивает центр аватарки с центром иконки Settings */}
+                                <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs shadow-sm overflow-hidden">
+                                        {isProfileLoading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin opacity-50" />
+                                        ) : profile?.avatarUrl ? (
+                                            <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                                        ) : (
+                                            displayName.charAt(0).toUpperCase()
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-start text-left overflow-hidden min-w-0 flex-1 ml-2 animate-in fade-in duration-200">
+                                    <span className="text-sm font-medium text-foreground truncate w-full">{displayName}</span>
+                                </div>
                             </div>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+                            {/* Контейнер 40x40 для стрелки - выравнивает центр стрелки с центром иконки темы */}
+                            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                            </div>
                         </>
+                    ) : (
+                        /* Свёрнутое состояние - без изменений */
+                        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs shadow-sm overflow-hidden">
+                            {isProfileLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin opacity-50" />
+                            ) : profile?.avatarUrl ? (
+                                <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                            ) : (
+                                displayName.charAt(0).toUpperCase()
+                            )}
+                        </div>
                     )}
                 </Button>
             </div>
