@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Separator } from "@/shared/ui/separator";
 import {
     Info,
     MessageSquareText,
@@ -15,33 +14,20 @@ import {
     Tag,
     Activity,
     History,
-    FileQuestionMark
+    FileQuestion,
+    Zap,
+    ClipboardList
 } from "lucide-react";
 import { NoteChatPanel } from "@/modules/chat";
 import { AudioPlayer, notesApi, type NoteDetailsDto, type NoteStatus, type NoteListItemDto } from "@/modules/notes";
 import { cn } from "@/shared/lib/utils";
 
-const STATUS_MAP: Record<NoteStatus, { label: string; color: string }> = {
-    Pending: {
-        label: "Ожидание",
-        color: "text-muted-foreground bg-muted/50 border-muted/50"
-    },
-    Failed: {
-        label: "Ошибка",
-        color: "text-red-700 bg-red-50 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/50"
-    },
-    Raw: {
-        label: "Черновик",
-        color: "text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/50"
-    },
-    Structured: {
-        label: "Структурировано",
-        color: "text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800/50"
-    },
-    Summarized: {
-        label: "Готово",
-        color: "text-emerald-700 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/50"
-    },
+const STATUS_LABELS: Record<NoteStatus, string> = {
+    Pending: "Ожидание",
+    Failed: "Ошибка",
+    Raw: "Черновик",
+    Structured: "Структурировано",
+    Summarized: "Готово",
 };
 
 export type SidebarView = 'info' | 'chat' | 'audio';
@@ -154,48 +140,53 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
 
             {sidebarView === 'info' && (
                 <ScrollArea className="flex-1">
-                    <div className="p-4 space-y-6">
-                        <section className="space-y-3">
-                            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">Свойства</h4>
-                            <div className="space-y-2.5 bg-background/50 rounded-lg p-3 border border-border/40 shadow-sm">
+                    <div className="p-4 space-y-4">
+                        {/* БЛОК 1: Свойства */}
+                        <section className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+                                <ClipboardList className="h-3.5 w-3.5 text-primary" />
+                                <h2 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                                    Свойства
+                                </h2>
+                            </div>
+                            <div className="p-4 space-y-3">
                                 <InfoRow
                                     label="Статус"
-                                    icon={<Activity className="h-3 w-3" />}
-                                    value={STATUS_MAP[note.status]?.label || note.status}
-                                    valueClassName={cn(
-                                        "px-2 py-0.5 rounded-md border text-[10px] font-bold transition-colors",
-                                        STATUS_MAP[note.status]?.color || "text-muted-foreground bg-muted border-transparent"
-                                    )}
+                                    icon={<Activity className="h-3.5 w-3.5" />}
+                                    value={STATUS_LABELS[note.status] || note.status}
                                 />
                                 <InfoRow
                                     label="Источник"
-                                    icon={<FileQuestionMark className="h-3 w-3" />}
+                                    icon={<FileQuestion className="h-3.5 w-3.5" />}
                                     value={note.sourceType === 'AudioFile' ? 'Аудио' : 'Текст'}
                                 />
                                 {note.category && (
-                                    <InfoRow label="Категория" icon={<Tag className="h-3 w-3" />} value={note.category} />
+                                    <InfoRow label="Категория" icon={<Tag className="h-3.5 w-3.5" />} value={note.category} />
                                 )}
-
-                                <Separator className="my-2 opacity-50" />
-
                                 <InfoRow
                                     label="Создана"
-                                    icon={<Calendar className="h-3 w-3" />}
+                                    icon={<Calendar className="h-3.5 w-3.5" />}
                                     value={format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}
                                 />
                                 {note.updatedAt && (
                                     <InfoRow
                                         label="Изменена"
-                                        icon={<History className="h-3 w-3" />}
+                                        icon={<History className="h-3.5 w-3.5" />}
                                         value={format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm")}
                                     />
                                 )}
                             </div>
                         </section>
 
-                        <section className="space-y-3">
-                            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-0.5">Действия</h4>
-                            <div className="grid gap-2">
+                        {/* БЛОК 2: Действия */}
+                        <section className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
+                                <Zap className="h-3.5 w-3.5 text-primary" />
+                                <h2 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                                    Действия
+                                </h2>
+                            </div>
+                            <div className="p-4 space-y-2">
                                 {note.sourceType === 'AudioFile' && (
                                     <ActionButton
                                         icon={<ScanText className="h-3.5 w-3.5" />}
@@ -219,19 +210,21 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                                     loading={summarizeMutation.isPending}
                                     disabled={isSummarizeDisabled}
                                 />
+
+                                <div className="h-3" />
+
+                                <div className="pt-6 border-t border-border/50">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full justify-start text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 h-9 text-[11px] font-bold transition-all"
+                                        onClick={handleDelete}
+                                    >
+                                        <Trash2 className="mr-2.5 h-3.5 w-3.5" /> Удалить заметку
+                                    </Button>
+                                </div>
                             </div>
                         </section>
-
-                        <Separator className="opacity-50" />
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full justify-start text-red-600 bg-red-500/10 hover:bg-red-500/20 border-red-500/30 hover:border-red-500 h-9 text-[11px] font-bold transition-all shadow-sm"
-                            onClick={handleDelete}
-                        >
-                            <Trash2 className="mr-2.5 h-3.5 w-3.5" /> Удалить заметку
-                        </Button>
                     </div>
                 </ScrollArea>
             )}
@@ -255,13 +248,13 @@ const TabButton = ({ active, onClick, icon }: { active: boolean, onClick: () => 
     </Button>
 );
 
-const InfoRow = ({ label, value, icon, valueClassName }: { label: string, value: string, icon: React.ReactNode, valueClassName?: string }) => (
+const InfoRow = ({ label, value, icon }: { label: string, value: string, icon: React.ReactNode }) => (
     <div className="flex justify-between items-center text-[11px] gap-2">
-        <div className="flex items-center gap-2 text-muted-foreground/80 font-medium shrink-0">
-            {icon}
+        <div className="flex items-center gap-2 text-muted-foreground font-medium shrink-0">
+            <span className="text-primary/70">{icon}</span>
             <span className="select-none">{label}</span>
         </div>
-        <span className={cn("font-bold text-foreground truncate", valueClassName)}>{value}</span>
+        <span className="font-bold text-foreground truncate">{value}</span>
     </div>
 );
 
