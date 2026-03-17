@@ -11,7 +11,7 @@ import type { NoteListItemDto, SortDirection } from "@/modules/notes/types/notes
 import {
     PanelLeftClose, PanelLeftOpen, Search, FileText,
     Loader2, Settings, ChevronRight,
-    MessageCircle, ArrowDown, ArrowUp, Sun, Moon
+    MessageSquare, ArrowDown, ArrowUp, Sun, Moon
 } from "lucide-react";
 
 import { Button } from "@/shared/ui/button";
@@ -197,7 +197,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                         )}
                         title={!isOpen ? "Общий чат" : undefined}
                     >
-                        <MessageCircle className="h-5 w-5 shrink-0" />
+                        <MessageSquare className="h-5 w-5 shrink-0" />
                         <span className={cn(
                             "whitespace-nowrap transition-all duration-300 font-medium",
                             isOpen ? "opacity-100 translate-x-0 w-auto" : "opacity-0 -translate-x-4 w-0 hidden"

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { cn } from "@/shared/lib/utils";
-import { FileJson, Sparkles, AlignLeft, Pencil, BookOpen, AlertCircle, type LucideIcon } from "lucide-react";
+import { FileJson, FileChartColumnIncreasing, AlignLeft, Pencil, BookOpen, AlertCircle, type LucideIcon } from "lucide-react";
 import { type NoteDetailsDto, type NoteStatus } from "@/modules/notes";
 
 type ViewMode = 'raw' | 'structured' | 'summary' | 'error';
@@ -44,8 +44,8 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
     }
     availableModes.push(
         { id: 'raw', label: 'Raw', icon: AlignLeft },
-        { id: 'structured', label: 'Structured', icon: FileJson },
-        { id: 'summary', label: 'Summary', icon: Sparkles }
+        { id: 'structured', label: 'Structured', icon: FileChartColumnIncreasing },
+        { id: 'summary', label: 'Summary', icon: FileJson }
     );
 
     return (

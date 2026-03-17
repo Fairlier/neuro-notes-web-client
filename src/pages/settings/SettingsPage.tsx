@@ -20,8 +20,12 @@ import {
     Languages,
     Sparkles,
     RefreshCcw,
-    Settings
+    Settings,
+    ScanText,
+    type LucideIcon, FileJson,
+    MessageSquare, MessageSquareText, FileChartColumnIncreasing
 } from "lucide-react";
+import {Checkbox} from "@/shared/ui/checkbox.tsx";
 
 const BUTTON_CLASS = "w-full sm:w-[220px] h-10 flex items-center justify-center gap-2 transition-all shrink-0";
 
@@ -82,12 +86,12 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
         }));
     };
 
-    const renderOperationItem = (title: string, opKey: keyof UserAIProfileResponse, providers: string[]) => {
+    const renderOperationItem = (title: string, opKey: keyof UserAIProfileResponse, providers: string[], Icon: LucideIcon) => {
         const opData = formData[opKey] as AIOperationSettingsDto || {};
         return (
             <div className="p-5 rounded-2xl border border-border bg-muted/10 space-y-4">
                 <div className="flex items-center gap-2 border-b border-border/40 pb-3 mb-1">
-                    <Settings2 className="h-4 w-4 text-primary" />
+                    <Icon className="h-4 w-4 text-primary" />
                     <span className="text-sm font-bold uppercase tracking-wider text-foreground">{title}</span>
                 </div>
 
@@ -124,21 +128,28 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
 
                 <div className="space-y-3 pt-2">
-                    <label className="flex items-center gap-2 cursor-pointer w-fit">
-                        <input
-                            type="checkbox"
+                    <div className="flex items-center gap-2 w-fit">
+                        <Checkbox
+                            id={`${opKey}-custom-prompt`}
                             checked={opData.useCustomPrompt || false}
-                            onChange={(e) => updateOperationSetting(opKey, 'useCustomPrompt', e.target.checked)}
-                            className="h-4 w-4 rounded border-border text-primary"
+                            onCheckedChange={(checked) => {
+                                updateOperationSetting(opKey, 'useCustomPrompt', checked === true);
+                            }}
                         />
-                        <span className="text-sm font-medium text-muted-foreground">Кастомный промт</span>
-                    </label>
+                        <label
+                            htmlFor={`${opKey}-custom-prompt`}
+                            className="text-sm font-medium text-muted-foreground cursor-pointer select-none"
+                        >
+                            Кастомный промт
+                        </label>
+                    </div>
 
                     {opData.useCustomPrompt && (
                         <Textarea
                             value={opData.customPrompt || ""}
                             onChange={(e) => updateOperationSetting(opKey, 'customPrompt', e.target.value)}
-                            className="min-h-[100px] bg-muted/20 border-border/50 resize-none"
+                            className="min-h-[100px] bg-muted/20 border-border/50 resize-none animate-in fade-in slide-in-from-top-1"
+                            placeholder="Введите инструкции для ИИ..."
                         />
                     )}
                 </div>
@@ -159,7 +170,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                     <div className="space-y-2 max-w-[200px]">
                         <label className="text-sm font-semibold flex items-center gap-2 ml-1">
                             <Languages className="h-3.5 w-3.5 text-primary" />
-                            Глобальный язык
+                            Глобальный язык (ISO)
                         </label>
                         <Input
                             value={formData.aiOperationLanguage}
@@ -178,11 +189,11 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                     <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Настройка операций</h2>
                 </div>
                 <div className="p-6 space-y-5">
-                    {renderOperationItem("Транскрибация", "transcription", systemConfig.providers.transcription)}
-                    {renderOperationItem("Структурирование", "structuring", systemConfig.providers.structure)}
-                    {renderOperationItem("Саммаризация", "summarization", systemConfig.providers.summary)}
-                    {renderOperationItem("Общий чат", "globalChat", systemConfig.providers.chat)}
-                    {renderOperationItem("Чат по заметке", "noteChat", systemConfig.providers.chat)}
+                    {renderOperationItem("Транскрибация", "transcription", systemConfig.providers.transcription, ScanText) }
+                    {renderOperationItem("Структурирование", "structuring", systemConfig.providers.structure, FileChartColumnIncreasing)}
+                    {renderOperationItem("Саммаризация", "summarization", systemConfig.providers.summary, FileJson)}
+                    {renderOperationItem("Общий чат", "globalChat", systemConfig.providers.chat, MessageSquare)}
+                    {renderOperationItem("Чат по заметке", "noteChat", systemConfig.providers.chat, MessageSquareText)}
                 </div>
             </section>
 

@@ -6,7 +6,7 @@ import { usersApi } from "@/modules/users";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut, Settings, Camera, ShieldAlert } from "lucide-react";
+import { Loader2, User, Upload, Trash2, CheckCircle2, LogOut, Settings, Camera, ShieldAlert, Languages } from "lucide-react";
 import { useTranslation } from 'react-i18next';
 
 export default function ProfilePage() {
@@ -157,7 +157,7 @@ export default function ProfilePage() {
 
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold flex items-center gap-2 ml-1">
-                                    <Settings className="h-3.5 w-3.5 text-primary" />
+                                    <Languages className="h-3.5 w-3.5 text-primary" />
                                     {t('profile.interfaceLanguage')}
                                 </label>
                                 <Select value={language} onValueChange={setLocalLanguage}>

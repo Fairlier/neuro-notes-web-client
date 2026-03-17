@@ -8,14 +8,14 @@ import {
     MessageSquareText,
     FileAudio,
     Trash2,
-    Mic,
+    ScanText,
     FileJson,
-    Sparkles,
+    FileChartColumnIncreasing,
     Calendar,
     Tag,
     Activity,
-    FileText,
-    History
+    History,
+    FileQuestionMark
 } from "lucide-react";
 import { NoteChatPanel } from "@/modules/chat";
 import { AudioPlayer, notesApi, type NoteDetailsDto, type NoteStatus, type NoteListItemDto } from "@/modules/notes";
@@ -169,7 +169,7 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                                 />
                                 <InfoRow
                                     label="Источник"
-                                    icon={<FileText className="h-3 w-3" />}
+                                    icon={<FileQuestionMark className="h-3 w-3" />}
                                     value={note.sourceType === 'AudioFile' ? 'Аудио' : 'Текст'}
                                 />
                                 {note.category && (
@@ -198,7 +198,7 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                             <div className="grid gap-2">
                                 {note.sourceType === 'AudioFile' && (
                                     <ActionButton
-                                        icon={<Mic className="h-3.5 w-3.5" />}
+                                        icon={<ScanText className="h-3.5 w-3.5" />}
                                         label="Транскрибировать"
                                         onClick={() => transcribeMutation.mutate(note.id)}
                                         loading={transcribeMutation.isPending}
@@ -206,14 +206,14 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                                     />
                                 )}
                                 <ActionButton
-                                    icon={<FileJson className="h-3.5 w-3.5" />}
+                                    icon={<FileChartColumnIncreasing className="h-3.5 w-3.5" />}
                                     label="Структурировать"
                                     onClick={() => structureMutation.mutate(note.id)}
                                     loading={structureMutation.isPending}
                                     disabled={isStructureDisabled}
                                 />
                                 <ActionButton
-                                    icon={<Sparkles className="h-3.5 w-3.5" />}
+                                    icon={<FileJson className="h-3.5 w-3.5" />}
                                     label="Сделать резюме"
                                     onClick={() => summarizeMutation.mutate(note.id)}
                                     loading={summarizeMutation.isPending}
