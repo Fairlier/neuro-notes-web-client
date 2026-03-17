@@ -1,6 +1,5 @@
 import Markdown from 'react-markdown';
 import { Textarea } from "@/shared/ui/textarea";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { NoteDetailsDto } from "@/modules/notes";
 
@@ -17,8 +16,8 @@ interface NoteEditorProps {
 }
 
 export const NoteEditor = ({ note, isLoading, isError, isEditing, displayContent, localContent, setLocalContent, titleInput, setTitleInput }: NoteEditorProps) => {
-    if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>;
-    if (isError || !note) return <div className="flex h-full items-center justify-center text-muted-foreground">Заметка не найдена</div>;
+    if (isLoading) return null;
+    if (isError || !note) return null;
 
     return (
         <div className="max-w-4xl mx-auto p-8 lg:p-12 h-full flex flex-col">
@@ -45,9 +44,7 @@ export const NoteEditor = ({ note, isLoading, isError, isEditing, displayContent
                     />
                 ) : displayContent ? (
                     <Markdown>{displayContent}</Markdown>
-                ) : (
-                    <span className="text-muted-foreground italic">Нет содержимого</span>
-                )}
+                ) : null }
             </div>
         </div>
     );

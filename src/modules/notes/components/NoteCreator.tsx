@@ -18,7 +18,7 @@ import { cn } from "@/shared/lib/utils";
 
 const DEFAULT_FILTERS: GetNotesParams = {
     searchMode: 'Title',
-    sortBy: 'CreatedAt',
+    sortBy: 'UpdatedAt',
     sortDirection: 'Descending',
     page: 1,
     pageSize: 20,
@@ -316,8 +316,8 @@ export const NoteCreator = () => {
                             className="w-full h-12 pl-12 pr-32 bg-background border-border rounded-lg"
                         />
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleFilterChange('searchMode', filters.searchMode === 'Semantic' ? 'Title' : 'Semantic')} className="h-8">
-                                {filters.searchMode === 'Semantic' ? <><Sparkles className="mr-1 h-3.5 w-3.5" /> AI</> : <><Type className="mr-1 h-3.5 w-3.5" /> Текст</>}
+                            <Button variant="ghost" size="icon" onClick={() => handleFilterChange('searchMode', filters.searchMode === 'Semantic' ? 'Title' : 'Semantic')} className="h-8 w-8">
+                                {filters.searchMode === 'Semantic' ? <Type className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
                             </Button>
                         </div>
                     </div>

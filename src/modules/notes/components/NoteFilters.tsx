@@ -1,4 +1,4 @@
-import { ArrowUpDown, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -112,8 +112,7 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
             )}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-foreground">
-                        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs font-medium">Сортировка</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Сортировка</span>
                     </div>
                     {isSemanticSearch && (
                         <span className="text-[10px] text-primary bg-primary/10 px-2 py-0.5 rounded-sm">

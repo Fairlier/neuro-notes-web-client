@@ -79,7 +79,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
     const notes = data?.pages.flatMap(page => page.notes) || [];
 
-    // Добавлен IntersectionObserver для подгрузки при скролле
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {

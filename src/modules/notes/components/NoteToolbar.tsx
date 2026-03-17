@@ -1,6 +1,5 @@
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import { motion } from "framer-motion"; 
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { cn } from "@/shared/lib/utils";
@@ -20,7 +19,7 @@ const StatusBadge = ({ status }: { status: NoteStatus }) => {
 
     return (
         <span className={cn(
-            "inline-flex items-center px-2.5 h-8 text-[11px] font-medium rounded-md border select-none transition-colors",
+            "inline-flex items-center px-2.5 h-8 text-[11px] font-medium rounded-md border select-none transition-colors whitespace-nowrap flex-shrink-0",
             styles
         )}>
             {status}
@@ -49,20 +48,20 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
     );
 
     return (
-        <div className="h-10 border-b border-border bg-background flex items-center justify-between px-4 flex-shrink-0 select-none">
+        <div className="h-10 border-b border-border bg-background flex items-center justify-between px-4 flex-shrink-0 select-none min-w-0">
             {/* ЛЕВАЯ ЧАСТЬ: СТАТУС И ДАТА */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                 <StatusBadge status={note.status} />
 
-                <Separator orientation="vertical" className="h-4 mx-1 opacity-50" />
+                <Separator orientation="vertical" className="h-4 mx-1 opacity-50 flex-shrink-0" />
 
-                <span className="text-[11px] text-muted-foreground/70 font-normal">
+                <span className="text-[11px] text-muted-foreground/70 font-normal whitespace-nowrap overflow-hidden text-ellipsis">
                     {format(new Date(note.updatedAt || note.createdAt), "d MMM yyyy, HH:mm", { locale: ru })}
                 </span>
             </div>
 
             {/* ПРАВАЯ ЧАСТЬ: ПЕРЕКЛЮЧАТЕЛЬ И РЕДАКТИРОВАНИЕ */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="relative flex p-1 bg-muted/50 rounded-lg border border-border/40 h-8 items-center">
                     {availableModes.map((mode) => {
                         const Icon = mode.icon;
@@ -74,27 +73,17 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
                                 key={mode.id}
                                 onClick={() => setViewMode(mode.id)}
                                 className={cn(
-                                    "relative flex items-center gap-1.5 px-3 h-6 text-[11px] font-medium transition-colors duration-300",
-                                    isActive
-                                        ? (isError ? "text-red-700 dark:text-red-300" : "text-foreground")
-                                        : (isError ? "text-red-600/50 hover:text-red-600" : "text-muted-foreground/80 hover:text-foreground")
+                                    "relative flex items-center gap-1.5 px-3 h-6 text-[11px] font-medium transition-colors duration-150 rounded-md whitespace-nowrap",
+                                    isActive && (isError
+                                        ? "text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 shadow-sm border border-border/20"
+                                        : "text-foreground bg-background shadow-sm border border-border/20"),
+                                    !isActive && (isError
+                                        ? "text-red-600/50 hover:text-red-600"
+                                        : "text-muted-foreground/80 hover:text-foreground")
                                 )}
                             >
-                                {isActive && (
-                                    <motion.div
-                                        layoutId="active-pill"
-                                        className={cn(
-                                            "absolute inset-0 rounded-md shadow-sm border border-border/20",
-                                            isError ? "bg-red-100 dark:bg-red-900/50" : "bg-background"
-                                        )}
-                                        transition={{ type: "spring", bounce: 0.18, duration: 0.4 }}
-                                    />
-                                )}
-
-                                <span className="relative z-10 flex items-center gap-1.5">
-                                    <Icon className="h-3.5 w-3.5" />
-                                    <span>{mode.label}</span>
-                                </span>
+                                <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                                <span>{mode.label}</span>
                             </button>
                         );
                     })}
@@ -107,7 +96,7 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
                     size="sm"
                     disabled={viewMode === 'error'}
                     className={cn(
-                        "h-8 w-8 p-0 rounded-md transition-colors",
+                        "h-8 w-8 p-0 rounded-md transition-colors flex-shrink-0",
                         isEditing ? "text-primary bg-primary/5" : "text-muted-foreground/60 hover:text-foreground hover:bg-muted",
                     )}
                     onClick={toggleEditMode}

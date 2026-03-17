@@ -15,6 +15,7 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Button } from "@/shared/ui/button";
 import { File, Plus, X, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import type {UpdateNoteRequest} from "@/modules/notes/types/notesTypes.ts";
 
 type ViewMode = 'raw' | 'structured' | 'summary' | 'error';
 
@@ -105,8 +106,25 @@ export default function NoteWorkspace() {
 
     const saveChangesMutation = useMutation({
         mutationFn: (data: { id: string; title: string; content: string; field: ViewMode }) => {
-            const field = data.field === 'raw' ? 'rawText' : data.field === 'structured' ? 'structuredText' : 'summaryText';
-            return notesApi.update(data.id, { title: data.title, [field]: data.content });
+            const trimmedContent = data.content.trim();
+
+            const updatePayload: UpdateNoteRequest = { title: data.title };
+
+            if (trimmedContent !== "") {
+                switch (data.field) {
+                    case 'raw':
+                        updatePayload.rawText = trimmedContent;
+                        break;
+                    case 'structured':
+                        updatePayload.structuredText = trimmedContent;
+                        break;
+                    case 'summary':
+                        updatePayload.summaryText = trimmedContent;
+                        break;
+                }
+            }
+
+            return notesApi.update(data.id, updatePayload);
         },
         onSuccess: async () => {
             await queryClient.invalidateQueries({ queryKey: ['note', id] });
@@ -226,7 +244,7 @@ export default function NoteWorkspace() {
                     </div>
                 </div>
 
-                <div className="pb-1.5 pl-2 border-l border-border shrink-0">
+                <div className="pb-1.5 pl-2 shrink-0">
                     <Button
                         variant="ghost"
                         size="icon"
