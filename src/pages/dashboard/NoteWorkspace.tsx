@@ -14,7 +14,7 @@ import {
 import { useTabs } from "@/modules/layout";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Button } from "@/shared/ui/button";
-import { File, Plus, X, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { FileAudio, FileText, Plus, X, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { UpdateNoteRequest } from "@/modules/notes/types/notesTypes.ts";
 
@@ -26,8 +26,13 @@ export default function NoteWorkspace() {
     const queryClient = useQueryClient();
 
     const {
-        tabs, activeTabId, lastActiveTabId,
-        setActiveTab, createNewTab, closeTab, openNoteInCurrentTab
+        tabs,
+        activeTabId,
+        lastActiveTabId,
+        setActiveTab,
+        createNewTab,
+        closeTab,
+        openNoteInCurrentTab
     } = useTabs();
 
     const [viewMode, setViewMode] = useState<ViewMode>('structured');
@@ -90,11 +95,16 @@ export default function NoteWorkspace() {
     const displayContent = useMemo(() => {
         if (!note) return "";
         switch (viewMode) {
-            case 'summary': return note.summaryText || "";
-            case 'structured': return note.structuredText || "";
-            case 'error': return note.errorMessage || t('note.noError');
-            case 'raw': return note.rawText || "";
-            default: return "";
+            case 'summary':
+                return note.summaryText || "";
+            case 'structured':
+                return note.structuredText || "";
+            case 'error':
+                return note.errorMessage || t('note.noError');
+            case 'raw':
+                return note.rawText || "";
+            default:
+                return "";
         }
     }, [note, viewMode, t]);
 
@@ -137,25 +147,37 @@ export default function NoteWorkspace() {
     useEffect(() => {
         if (!id && tabs.length > 0) {
             const targetId = lastActiveTabId || tabs[tabs.length - 1].id;
-            if (tabs.some(t => t.id === targetId)) setActiveTab(targetId);
+            if (tabs.some(t => t.id === targetId)) {
+                setActiveTab(targetId);
+            }
         }
     }, [id, tabs, lastActiveTabId, setActiveTab]);
 
     useEffect(() => {
         if (id && id !== 'new' && note) {
-            openNoteInCurrentTab(id, note.title || t('workspace.untitled'));
+            openNoteInCurrentTab(
+                id,
+                note.title || t('workspace.untitled'),
+                note.sourceType
+            );
         }
-    }, [id, note?.title, openNoteInCurrentTab, t]);
+    }, [id, note?.title, note?.sourceType, openNoteInCurrentTab, t, note]);
 
     const isCreating = id === 'new' || (!id && tabs.length === 0);
 
     const toggleEditMode = () => {
         if (isEditing && note && id && viewMode !== 'error') {
-            saveChangesMutation.mutate({ id, title: titleInput, content: localContent, field: viewMode });
+            saveChangesMutation.mutate({
+                id,
+                title: titleInput,
+                content: localContent,
+                field: viewMode
+            });
         } else if (!isEditing) {
             setTitleInput(note?.title || "");
             setLocalContent(displayContent);
         }
+
         setIsEditing(!isEditing);
     };
 
@@ -164,9 +186,11 @@ export default function NoteWorkspace() {
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
+
             const totalWidth = document.body.clientWidth;
             const newWidth = totalWidth - e.clientX;
             const maxWidth = totalWidth / 2;
+
             if (newWidth >= MIN_SIDEBAR_WIDTH && newWidth <= maxWidth) {
                 setSidebarWidth(newWidth);
             } else if (newWidth < MIN_SIDEBAR_WIDTH) {
@@ -195,7 +219,6 @@ export default function NoteWorkspace() {
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden bg-background text-foreground">
-            {/* ШАПКА ТАБОВ */}
             <div className="h-10 bg-muted/50 flex items-end justify-between px-2 border-b border-border select-none flex-shrink-0 gap-2">
                 <div
                     className="flex items-end flex-1 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
@@ -207,6 +230,8 @@ export default function NoteWorkspace() {
                 >
                     {tabs.map((tab) => {
                         const isActive = tab.id === activeTabId;
+                        const isAudio = tab.sourceType === 'AudioFile';
+
                         return (
                             <div
                                 key={tab.id}
@@ -219,14 +244,30 @@ export default function NoteWorkspace() {
                                         : "bg-muted/50 border-transparent text-muted-foreground hover:bg-muted"
                                 )}
                             >
-                                <File className={cn(
-                                    "h-3 w-3 shrink-0",
-                                    isActive ? "text-primary" : "text-muted-foreground"
-                                )} />
+                                {isAudio ? (
+                                    <FileAudio
+                                        className={cn(
+                                            "h-3 w-3 shrink-0",
+                                            isActive ? "text-primary" : "text-muted-foreground"
+                                        )}
+                                    />
+                                ) : (
+                                    <FileText
+                                        className={cn(
+                                            "h-3 w-3 shrink-0",
+                                            isActive ? "text-primary" : "text-muted-foreground"
+                                        )}
+                                    />
+                                )}
+
                                 <span className="truncate flex-1 min-w-0">{tab.title}</span>
+
                                 <div
                                     role="button"
-                                    onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        closeTab(tab.id);
+                                    }}
                                     className={cn(
                                         "shrink-0 p-0.5 rounded-md hover:bg-muted-foreground/20 transition-opacity",
                                         "opacity-0 group-hover:opacity-100",
@@ -238,6 +279,7 @@ export default function NoteWorkspace() {
                             </div>
                         );
                     })}
+
                     <div
                         onClick={createNewTab}
                         className="flex items-center justify-center h-8 w-8 ml-1 mb-0.5 rounded-lg hover:bg-muted cursor-pointer text-muted-foreground transition-colors shrink-0"
@@ -253,7 +295,11 @@ export default function NoteWorkspace() {
                         className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
                         onClick={() => setRightSidebarOpen(!isRightSidebarOpen)}
                     >
-                        {isRightSidebarOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                        {isRightSidebarOpen ? (
+                            <PanelRightClose className="h-4 w-4" />
+                        ) : (
+                            <PanelRightOpen className="h-4 w-4" />
+                        )}
                     </Button>
                 </div>
             </div>
@@ -279,7 +325,9 @@ export default function NoteWorkspace() {
                         </div>
                     )}
 
-                    {isCreating ? <NoteCreator /> : (
+                    {isCreating ? (
+                        <NoteCreator />
+                    ) : (
                         <ScrollArea className="flex-1">
                             <NoteEditor
                                 note={note}

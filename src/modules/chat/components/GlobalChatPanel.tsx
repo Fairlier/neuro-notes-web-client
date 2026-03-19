@@ -194,12 +194,8 @@ export const GlobalChatPanel = () => {
                             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 shadow-sm">
                                 <Bot className="h-4 w-4 text-primary-foreground" />
                             </div>
-                            <div className="bg-card border border-border rounded-2xl rounded-tl-none px-5 py-4 shadow-sm">
-                                <div className="flex gap-1">
-                                    <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                    <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                    <div className="h-2 w-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                                </div>
+                            <div className="bg-card border border-border rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
+                                <Loader2 className="h-4 w-4 animate-spin opacity-50" />
                             </div>
                         </div>
                     )}

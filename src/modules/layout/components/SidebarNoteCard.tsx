@@ -27,14 +27,12 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
     const dateToUse = note.updatedAt ? new Date(note.updatedAt) : new Date(note.createdAt);
     const isAudio = note.sourceType === 'AudioFile';
 
-    // Функция форматирования даты с учётом локали
     const formatDate = (date: Date) => {
         const locale = i18n.language === 'ru' ? ru : enUS;
         const dateFormat = i18n.language === 'ru' ? "d MMM yyyy" : "MMM d, yyyy";
         return format(date, dateFormat, { locale });
     };
 
-    // Получение локализованной категории
     const getCategoryLabel = (category: string) =>
         t(`note.category.${category}`, { defaultValue: category });
 

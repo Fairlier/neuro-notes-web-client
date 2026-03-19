@@ -4,13 +4,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 export interface TabData {
     id: string;
     title: string;
+    sourceType?: string;
 }
 
 interface TabsContextType {
     tabs: TabData[];
     activeTabId: string | null;
     lastActiveTabId: string | null;
-    openNoteInCurrentTab: (id: string, title: string) => void;
+    openNoteInCurrentTab: (id: string, title: string, sourceType?: string) => void;
     closeTab: (id: string) => void;
     setActiveTab: (id: string) => void;
     createNewTab: () => void;
@@ -41,8 +42,11 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     }, [tabs]);
 
     useEffect(() => {
-        if (lastActiveTabId) localStorage.setItem(LAST_ACTIVE_KEY, lastActiveTabId);
-        else localStorage.removeItem(LAST_ACTIVE_KEY);
+        if (lastActiveTabId) {
+            localStorage.setItem(LAST_ACTIVE_KEY, lastActiveTabId);
+        } else {
+            localStorage.removeItem(LAST_ACTIVE_KEY);
+        }
     }, [lastActiveTabId]);
 
     const activeTabId = useMemo(() => {
@@ -50,26 +54,46 @@ export function TabsProvider({ children }: { children: ReactNode }) {
         return match ? match[1] : null;
     }, [location.pathname]);
 
-    if (activeTabId && activeTabId !== 'new' && activeTabId !== lastActiveTabId) {
-        setLastActiveTabId(activeTabId);
-    }
+    useEffect(() => {
+        if (activeTabId && activeTabId !== "new" && activeTabId !== lastActiveTabId) {
+            setLastActiveTabId(activeTabId);
+        }
+    }, [activeTabId, lastActiveTabId]);
 
-    const openNoteInCurrentTab = useCallback((id: string, title: string) => {
-        setTabs(prev => {
-            const tabIndex = prev.findIndex(t => t.id === id);
+    const openNoteInCurrentTab = useCallback((id: string, title: string, sourceType?: string) => {
+        setTabs((prev) => {
+            const tabIndex = prev.findIndex((t) => t.id === id);
 
             if (tabIndex !== -1) {
-                if (prev[tabIndex].title === title) return prev;
+                const existingTab = prev[tabIndex];
+
+                if (
+                    existingTab.title === title &&
+                    existingTab.sourceType === sourceType
+                ) {
+                    return prev;
+                }
+
                 const updatedTabs = [...prev];
-                updatedTabs[tabIndex] = { ...updatedTabs[tabIndex], title };
+                updatedTabs[tabIndex] = {
+                    ...existingTab,
+                    title,
+                    sourceType,
+                };
                 return updatedTabs;
             }
 
             const currentActiveId = location.pathname.match(/^\/notes\/([^/]+)/)?.[1];
-            if (!currentActiveId || currentActiveId === 'new') {
-                return [...prev, { id, title }];
+
+            if (!currentActiveId || currentActiveId === "new") {
+                return [...prev, { id, title, sourceType }];
             }
-            return prev.map(t => t.id === currentActiveId ? { id, title } : t);
+
+            return prev.map((t) =>
+                t.id === currentActiveId
+                    ? { id, title, sourceType }
+                    : t
+            );
         });
 
         if (!location.pathname.includes(id)) {
@@ -78,19 +102,32 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     }, [navigate, location.pathname]);
 
     const closeTab = useCallback((id: string) => {
-        setTabs(prev => {
-            const newTabs = prev.filter(t => t.id !== id);
+        setTabs((prev) => {
+            const newTabs = prev.filter((t) => t.id !== id);
+
             if (activeTabId === id) {
-                if (newTabs.length > 0) navigate(`/notes/${newTabs[newTabs.length - 1].id}`);
-                else navigate('/notes');
+                if (newTabs.length > 0) {
+                    navigate(`/notes/${newTabs[newTabs.length - 1].id}`);
+                } else {
+                    navigate("/notes");
+                }
             }
-            if (lastActiveTabId === id) setLastActiveTabId(null);
+
+            if (lastActiveTabId === id) {
+                setLastActiveTabId(null);
+            }
+
             return newTabs;
         });
     }, [navigate, activeTabId, lastActiveTabId]);
 
-    const setActiveTab = useCallback((id: string) => navigate(`/notes/${id}`), [navigate]);
-    const createNewTab = useCallback(() => navigate('/notes/new'), [navigate]);
+    const setActiveTab = useCallback((id: string) => {
+        navigate(`/notes/${id}`);
+    }, [navigate]);
+
+    const createNewTab = useCallback(() => {
+        navigate("/notes/new");
+    }, [navigate]);
 
     const clearAllTabs = useCallback(() => {
         setTabs([]);
@@ -100,8 +137,28 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const value = useMemo(() => ({
-        tabs, activeTabId, lastActiveTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab, clearAllTabs
-    }), [tabs, activeTabId, lastActiveTabId, openNoteInCurrentTab, closeTab, setActiveTab, createNewTab, clearAllTabs]);
+        tabs,
+        activeTabId,
+        lastActiveTabId,
+        openNoteInCurrentTab,
+        closeTab,
+        setActiveTab,
+        createNewTab,
+        clearAllTabs,
+    }), [
+        tabs,
+        activeTabId,
+        lastActiveTabId,
+        openNoteInCurrentTab,
+        closeTab,
+        setActiveTab,
+        createNewTab,
+        clearAllTabs,
+    ]);
 
-    return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
+    return (
+        <TabsContext.Provider value={value}>
+            {children}
+        </TabsContext.Provider>
+    );
 }
