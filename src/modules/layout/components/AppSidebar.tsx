@@ -162,7 +162,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
             {/* 1. ШАПКА */}
             <div className="flex items-center h-16 flex-shrink-0 w-full relative overflow-hidden">
                 <div className={cn(
-                    "absolute left-[15px] flex items-center gap-2 font-bold text-foreground select-none transition-all duration-300",
+                    "absolute left-[15px] flex items-center gap-2 font-bold text-foreground select-none",
                     isOpen ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4 pointer-events-none"
                 )}>
                     <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center shrink-0 shadow-sm">
@@ -353,7 +353,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             </div>
                         </>
                     ) : (
-                        /* Свёрнутое состояние - без изменений */
                         <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs shadow-sm overflow-hidden">
                             {isProfileLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin opacity-50" />
