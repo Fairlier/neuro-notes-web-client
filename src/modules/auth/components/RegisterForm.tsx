@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/modules/auth";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
 
 export const RegisterForm = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { register } = useAuth();
 
@@ -20,7 +22,7 @@ export const RegisterForm = () => {
         setError("");
 
         if (password !== confirmPassword) {
-            setError("Пароли не совпадают");
+            setError(t('register.passwordMismatch'));
             return;
         }
 
@@ -33,9 +35,9 @@ export const RegisterForm = () => {
             console.error("Registration error", err);
 
             if (err instanceof Error) {
-                setError(err.message || "Ошибка при регистрации. Возможно, email уже занят.");
+                setError(err.message || t('register.error'));
             } else {
-                setError("Ошибка при регистрации. Возможно, email уже занят.");
+                setError(t('register.error'));
             }
         } finally {
             setIsLoading(false);
@@ -48,8 +50,8 @@ export const RegisterForm = () => {
                 <div className="h-12 w-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-sm">
                     N
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight">Создать аккаунт</h1>
-                <p className="text-sm text-muted-foreground mt-2">Начните работу с NeuroNotes</p>
+                <h1 className="text-2xl font-bold tracking-tight">{t('register.title')}</h1>
+                <p className="text-sm text-muted-foreground mt-2">{t('register.subtitle')}</p>
             </div>
 
             {error && (
@@ -61,7 +63,7 @@ export const RegisterForm = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Email</label>
+                    <label className="text-sm font-medium text-foreground">{t('register.emailLabel')}</label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -69,14 +71,14 @@ export const RegisterForm = () => {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="name@example.com"
+                            placeholder={t('register.emailPlaceholder')}
                             className="pl-10 bg-background"
                         />
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Пароль</label>
+                    <label className="text-sm font-medium text-foreground">{t('register.passwordLabel')}</label>
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -91,7 +93,7 @@ export const RegisterForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Подтвердите пароль</label>
+                    <label className="text-sm font-medium text-foreground">{t('register.confirmPasswordLabel')}</label>
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -107,14 +109,14 @@ export const RegisterForm = () => {
 
                 <Button type="submit" className="w-full mt-6" disabled={isLoading}>
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {isLoading ? "Создание..." : "Зарегистрироваться"}
+                    {isLoading ? t('register.submitting') : t('register.submit')}
                 </Button>
             </form>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
-                Уже есть аккаунт?{" "}
+                {t('register.hasAccount')}{" "}
                 <Link to="/login" className="text-primary hover:underline font-medium">
-                    Войти
+                    {t('register.login')}
                 </Link>
             </div>
         </div>

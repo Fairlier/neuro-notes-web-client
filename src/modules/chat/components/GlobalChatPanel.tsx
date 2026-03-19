@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 import { chatApi } from "../api/chatApi";
 import { usersApi } from "@/modules/users";
 import { cn } from "@/shared/lib/utils";
@@ -8,9 +9,10 @@ import { Textarea } from "@/shared/ui/textarea";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Loader2, Trash2, Bot, User, MessageSquare, AlertCircle, ArrowUp } from "lucide-react";
 import Markdown from 'react-markdown';
-import type {ChatHistoryResponse} from "@/modules/chat";
+import type { ChatHistoryResponse } from "@/modules/chat";
 
 export const GlobalChatPanel = () => {
+    const { t } = useTranslation();
     const [input, setInput] = useState("");
     const scrollRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -51,11 +53,11 @@ export const GlobalChatPanel = () => {
             return { previousData };
         },
         onError: (err, _, context) => {
-            console.error("Ошибка отправки:", err);
+            console.error("Send error:", err);
             if (context?.previousData) {
                 queryClient.setQueryData(['global-chat'], context.previousData);
             }
-            alert("Не удалось отправить сообщение.");
+            alert(t('globalChat.error.sendFailed'));
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['global-chat'] });
@@ -108,14 +110,14 @@ export const GlobalChatPanel = () => {
                 <div className="h-12 w-12 bg-destructive/10 rounded-full flex items-center justify-center text-destructive">
                     <AlertCircle className="h-6 w-6" />
                 </div>
-                <h2 className="text-lg font-semibold">Ошибка загрузки чата</h2>
+                <h2 className="text-lg font-semibold">{t('globalChat.error.title')}</h2>
                 <p className="text-sm text-muted-foreground max-w-md">
-                    Не удалось подключиться к серверу чата. Проверьте, запущен ли бэкенд.
+                    {t('globalChat.error.description')}
                 </p>
                 <div className="p-4 bg-muted rounded-md text-xs font-mono text-left max-w-lg overflow-auto border border-border">
                     {error instanceof Error ? error.message : JSON.stringify(error, null, 2)}
                 </div>
-                <Button onClick={() => window.location.reload()}>Обновить страницу</Button>
+                <Button onClick={() => window.location.reload()}>{t('globalChat.error.refresh')}</Button>
             </div>
         );
     }
@@ -131,7 +133,7 @@ export const GlobalChatPanel = () => {
                             <MessageSquare className="h-5 w-5" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold leading-none">Общий чат</h1>
+                            <h1 className="text-xl font-bold leading-none">{t('globalChat.title')}</h1>
                         </div>
                     </div>
                 </div>
@@ -147,8 +149,7 @@ export const GlobalChatPanel = () => {
                         <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 opacity-50">
                             <Bot className="h-16 w-16 text-muted-foreground" />
                             <div className="text-muted-foreground">
-                                <p className="font-medium text-lg">Чат пуст</p>
-                                <p className="text-sm">Задайте вопрос, и нейросеть проанализирует все ваши заметки.</p>
+                                <p className="font-medium text-lg">{t('globalChat.empty')}</p>
                             </div>
                         </div>
                     ) : (
@@ -162,7 +163,7 @@ export const GlobalChatPanel = () => {
                                     )}>
                                         {isUser ? (
                                             profile?.avatarUrl ? (
-                                                <img src={profile.avatarUrl} alt="Вы" className="h-full w-full object-cover" />
+                                                <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
                                             ) : (
                                                 <User className="h-4 w-4 text-muted-foreground" />
                                             )
@@ -216,7 +217,7 @@ export const GlobalChatPanel = () => {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Задайте вопрос по базе знаний..."
+                            placeholder={t('globalChat.placeholder')}
                             className="w-full min-h-[60px] resize-none bg-transparent border-none focus-visible:ring-0 text-base p-4 overflow-y-auto scrollbar-thin"
                         />
                         <div className="flex justify-between items-center p-2 bg-muted/30 rounded-b-xl border-t border-border">
@@ -225,10 +226,10 @@ export const GlobalChatPanel = () => {
                                 size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                 onClick={() => {
-                                    if (confirm("Вы уверены, что хотите очистить историю переписки?")) clearMutation.mutate();
+                                    if (confirm(t('globalChat.confirmClear'))) clearMutation.mutate();
                                 }}
                                 disabled={messages.length === 0 || clearMutation.isPending}
-                                title="Очистить историю"
+                                title={t('globalChat.clearHistory')}
                             >
                                 {clearMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                             </Button>

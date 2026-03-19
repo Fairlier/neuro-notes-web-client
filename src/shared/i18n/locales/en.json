@@ -1,13 +1,219 @@
 {
   "profile": {
     "title": "Profile Settings",
+    "avatar": "User Avatar",
     "nickname": "Nickname",
     "interfaceLanguage": "Interface Language",
-    "saveChanges": "Save Changes"
+    "selectInterfaceLanguage": "Select language",
+    "saveChanges": "Save Changes",
+    "successMsg": "Profile updated successfully",
+    "changeAvatar": "Change Avatar",
+    "deleteAvatar": "Delete Avatar",
+    "endSession": "End Session",
+    "logoutText": "Sign out from this device",
+    "logout": "Sign Out",
+    "userSettings": "User Settings"
   },
   "sidebar": {
     "globalChat": "Global Chat",
-    "workspace": "Workspace",
-    "settings": "Settings"
+    "notes": "Notes",
+    "settings": "Settings",
+    "search": "Search...",
+    "noNotes": "No notes",
+    "untitled": "Untitled",
+    "sortNewest": "Newest first",
+    "sortOldest": "Oldest first",
+    "toggleTheme": "Toggle theme"
+  },
+  "settings": {
+    "title": "AI Settings",
+    "successMsg": "Settings saved successfully",
+    "resetMsg": "Settings reset successfully",
+    "confirmReset": "Reset settings?",
+    "general": {
+      "title": "General Parameters",
+      "globalLanguage": "Global Language (ISO)"
+    },
+    "operations": {
+      "title": "Operations Settings",
+      "provider": "Provider",
+      "providerDefault": "Default",
+      "language": "Language (ISO)",
+      "customPrompt": "Custom Prompt",
+      "customPromptPlaceholder": "Enter AI instructions...",
+      "transcription": "Transcription",
+      "structuring": "Structuring",
+      "summarization": "Summarization",
+      "globalChat": "Global Chat",
+      "noteChat": "Note Chat"
+    },
+    "providerKeys": {
+      "title": "Provider Keys",
+      "provider": "Provider",
+      "selectProvider": "Select provider",
+      "key": "Key",
+      "value": "Value"
+    },
+    "actions": {
+      "reset": "Reset Settings",
+      "save": "Save Settings"
+    }
+  },
+  "globalChat": {
+    "title": "Global Chat",
+    "empty": "Chat is empty",
+    "placeholder": "Ask a question about your notes...",
+    "clearHistory": "Clear history",
+    "confirmClear": "Are you sure you want to clear the chat history?",
+    "error": {
+      "title": "Failed to load chat",
+      "description": "Could not connect to the chat server. Please check if the backend is running.",
+      "refresh": "Refresh page",
+      "sendFailed": "Failed to send message."
+    }
+  },
+  "noteChat": {
+    "placeholder": "Ask a question about this note...",
+    "clearHistory": "Clear history",
+    "confirmClear": "Are you sure you want to clear the chat history?"
+  },
+  "note": {
+    "status": {
+      "Pending": "Pending",
+      "Failed": "Failed",
+      "Raw": "Draft",
+      "Structured": "Structured",
+      "Summarized": "Summarized"
+    },
+    "sourceType": {
+      "AudioFile": "Audio",
+      "Text": "Text"
+    },
+    "category": {
+      "Finance": "Finance",
+      "Other": "Other",
+      "Work": "Work",
+      "Study": "Study",
+      "Idea": "Idea",
+      "Personal": "Personal",
+      "Reference": "Reference"
+    },
+    "viewMode": {
+      "raw": "Draft",
+      "structured": "Outline",
+      "summary": "Summary",
+      "error": "Error"
+    },
+    "noError": "No error",
+    "sidebar": {
+      "tabs": {
+        "info": "Information",
+        "chat": "Note Chat",
+        "audio": "Audio File"
+      },
+      "properties": {
+        "title": "Note Properties",
+        "status": "Status",
+        "source": "Source",
+        "category": "Category",
+        "createdAt": "Created",
+        "updatedAt": "Modified"
+      },
+      "actions": {
+        "title": "Note Operations",
+        "transcribe": "Transcribe",
+        "structure": "Structure",
+        "summarize": "Summarize",
+        "delete": "Delete Note",
+        "processing": "Processing"
+      },
+      "audio": {
+        "title": "Audio Recording",
+        "notFound": "File not found"
+      }
+    }
+  },
+  "workspace": {
+    "confirmDelete": "Are you sure you want to delete this note? This action cannot be undone.",
+    "deleteError": "Failed to delete note. Please try again.",
+    "untitled": "Untitled",
+    "dateFormat": "MM/dd/yyyy HH:mm"
+  },
+  "noteCreator": {
+    "title": "What would you like to create?",
+    "titlePlaceholder": "Note title (optional)",
+    "contentPlaceholder": "Write a note or idea...",
+    "defaultTitle": "New note",
+    "audioNoteTitle": "Audio note from {{date}}",
+    "uploadAudio": "Upload audio file",
+    "deleteFile": "Delete file",
+    "deleteRecording": "Delete recording",
+    "switchToText": "Switch to text",
+    "switchToVoice": "Switch to voice",
+    "search": {
+      "title": "Search notes",
+      "placeholderSemantic": "Search by meaning...",
+      "placeholderTitle": "Search by title...",
+      "notFound": "No notes found",
+      "notFoundHint": "Try changing the filter settings"
+    },
+    "filters": {
+      "button": "Filters",
+      "title": "Parameters",
+      "reset": "Reset",
+      "status": {
+        "label": "Status",
+        "all": "All statuses"
+      },
+      "type": {
+        "label": "Type",
+        "all": "All types",
+        "text": "Text",
+        "audio": "Audio"
+      },
+      "category": {
+        "label": "Category",
+        "all": "All categories"
+      },
+      "sort": {
+        "label": "Sort",
+        "aiSort": "AI Sort",
+        "byUpdatedAt": "Updated date",
+        "byCreatedAt": "Created date",
+        "byTitle": "Title",
+        "descending": "Descending",
+        "ascending": "Ascending"
+      }
+    }
+  },
+  "audioPlayer": {
+    "loading": "Loading audio...",
+    "error": "Failed to load audio file"
+  },
+  "login": {
+    "title": "Welcome back",
+    "subtitle": "Sign in to your NeuroNotes account",
+    "emailLabel": "Email",
+    "emailPlaceholder": "name@example.com",
+    "passwordLabel": "Password",
+    "submit": "Sign In",
+    "submitting": "Signing in...",
+    "error": "Invalid email or password",
+    "noAccount": "Don't have an account?",
+    "register": "Sign Up"
+  },
+  "register": {
+    "title": "Create Account",
+    "subtitle": "Get started with NeuroNotes",
+    "emailLabel": "Email",
+    "emailPlaceholder": "name@example.com",
+    "passwordLabel": "Password",
+    "confirmPasswordLabel": "Confirm Password",
+    "submit": "Sign Up",
+    "submitting": "Creating...",
+    "error": "Registration failed. The email may already be taken.",
+    "passwordMismatch": "Passwords do not match",
+    "hasAccount": "Already have an account?",
+    "login": "Sign In"
   }
 }

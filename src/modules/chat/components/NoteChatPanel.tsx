@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 import { Loader2, Trash2, ArrowUp } from "lucide-react";
 
 import { chatApi } from "../api/chatApi";
@@ -15,6 +16,7 @@ interface NoteChatPanelProps {
 }
 
 export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const [inputValue, setInputValue] = useState("");
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -102,10 +104,6 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                 <div className="p-4 flex flex-col gap-4">
                     {isLoading ? (
                         <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-                    ) : messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center text-muted-foreground text-center py-10 opacity-50">
-                            <p className="text-xs font-medium uppercase tracking-widest font-mono">История пуста</p>
-                        </div>
                     ) : (
                         <>
                             {messages.map((msg, i) => {
@@ -143,7 +141,7 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Спросить..."
+                        placeholder={t('noteChat.placeholder')}
                         className="w-full min-h-[60px] resize-none bg-transparent border-none focus-visible:ring-0 text-sm p-3 overflow-y-auto scrollbar-thin"
                         disabled={sendMessageMutation.isPending}
                     />
@@ -155,12 +153,12 @@ export const NoteChatPanel = ({ noteId }: NoteChatPanelProps) => {
                                 size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                                 onClick={() => {
-                                    if (confirm("Вы уверены, что хотите очистить историю переписки?")) {
+                                    if (confirm(t('noteChat.confirmClear'))) {
                                         clearHistoryMutation.mutate();
                                     }
                                 }}
                                 disabled={messages.length === 0 || clearHistoryMutation.isPending}
-                                title="Очистить историю"
+                                title={t('noteChat.clearHistory')}
                             >
                                 {clearHistoryMutation.isPending ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />

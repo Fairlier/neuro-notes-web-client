@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru } from "date-fns/locale/ru";
+import { enUS } from "date-fns/locale/en-US";
 import { FileText, FileAudio, Calendar } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { NoteListItemDto, NoteStatus } from "@/modules/notes";
@@ -10,6 +12,19 @@ interface NoteCardProps {
 }
 
 export const NoteCard = ({ note, onClick }: NoteCardProps) => {
+    const { t, i18n } = useTranslation();
+
+    // Функция форматирования даты с учётом локали
+    const formatDate = (dateString: string) => {
+        const locale = i18n.language === 'ru' ? ru : enUS;
+        const dateFormat = i18n.language === 'ru' ? "d MMM yyyy" : "MMM d, yyyy";
+        return format(new Date(dateString), dateFormat, { locale });
+    };
+
+    // Получение локализованной категории
+    const getCategoryLabel = (category: string) =>
+        t(`note.category.${category}`, { defaultValue: category });
+
     const statusBorderColors: Record<NoteStatus, string> = {
         'Pending': 'bg-muted-foreground/40',
         'Failed': 'bg-red-500',
@@ -47,24 +62,22 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
                     </div>
 
                     <h3 className="font-medium truncate group-hover:text-primary transition-colors">
-                        {note.title || "Без названия"}
+                        {note.title || t('sidebar.untitled')}
                     </h3>
                 </div>
             </div>
 
             {/* Контент карточки: НИЖНЯЯ СТРОКА */}
             <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1">
-                {/* Изменили gap-1 на gap-2, чтобы отступ до текста совпадал с верхней строкой */}
                 <div className="flex items-center gap-2">
-                    {/* Добавили обертку w-8 для центровки иконки календаря ровно под верхней иконкой */}
                     <div className="w-8 flex justify-center shrink-0">
                         <Calendar className="h-3 w-3" />
                     </div>
-                    <span>{format(new Date(note.createdAt), "d MMM yyyy", { locale: ru })}</span>
+                    <span>{formatDate(note.createdAt)}</span>
                 </div>
                 {note.category && (
                     <span className="bg-muted px-2 py-0.5 rounded-sm text-[10px]">
-                        {note.category}
+                        {getCategoryLabel(note.category)}
                     </span>
                 )}
             </div>

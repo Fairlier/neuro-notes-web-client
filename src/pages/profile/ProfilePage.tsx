@@ -36,7 +36,7 @@ export default function ProfilePage() {
             queryClient.invalidateQueries({ queryKey: ['userProfile'] });
             setLocalNickname(null);
             setLocalLanguage(null);
-            setSuccessMsg("Профиль успешно обновлен");
+            setSuccessMsg(t('profile.successMsg'));
             setTimeout(() => setSuccessMsg(""), 3000);
         }
     });
@@ -116,7 +116,7 @@ export default function ProfilePage() {
                                 disabled={uploadAvatarMutation.isPending}
                             >
                                 {uploadAvatarMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                                Изменить фото
+                                {t('profile.changeAvatar')}
                             </Button>
                             {profile?.avatarUrl && (
                                 <Button
@@ -125,7 +125,7 @@ export default function ProfilePage() {
                                     onClick={() => deleteAvatarMutation.mutate()}
                                     disabled={deleteAvatarMutation.isPending}
                                 >
-                                    <Trash2 className="h-4 w-4" /> Удалить фото
+                                    <Trash2 className="h-4 w-4" /> {t('profile.deleteAvatar')}
                                 </Button>
                             )}
                         </div>
@@ -137,7 +137,7 @@ export default function ProfilePage() {
                     <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                         <Settings className="h-4 w-4 text-primary" />
                         <h2 className="text-sm font-bold tracking-wider text-muted-foreground uppercase">
-                            Настройки пользователя
+                            {t('profile.userSettings')}
                         </h2>
                     </div>
 
@@ -201,8 +201,8 @@ export default function ProfilePage() {
                                 <ShieldAlert className="h-6 w-6" />
                             </div>
                             <div className="text-center sm:text-left">
-                                <h3 className="text-lg font-bold text-foreground leading-tight">Завершение сеанса</h3>
-                                <p className="text-xs text-muted-foreground mt-1 text-balance">Выход из аккаунта на этом устройстве</p>
+                                <h3 className="text-lg font-bold text-foreground leading-tight">{t('profile.endSession')}</h3>
+                                <p className="text-xs text-muted-foreground mt-1 text-balance">{t('profile.logoutText')}</p>
                             </div>
                         </div>
                         <Button
@@ -211,7 +211,7 @@ export default function ProfilePage() {
                             className={`${BUTTON_CLASS} shadow-lg shadow-destructive/20`}
                         >
                             <LogOut className="h-4 w-4" />
-                            Выйти из аккаунта
+                            {t('profile.logout')}
                         </Button>
                     </div>
                 </section>

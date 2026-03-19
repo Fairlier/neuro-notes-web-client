@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { useAuth } from "@/modules/auth";
 import { useTheme } from "@/modules/theme";
 import { useTabs } from "../hooks/useTabs";
@@ -26,6 +27,7 @@ interface AppSidebarProps {
 }
 
 export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
+    const { t } = useTranslation();
     const { user } = useAuth();
     const { theme, setTheme } = useTheme();
     const location = useLocation();
@@ -136,7 +138,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
     const handleNoteClick = (e: React.MouseEvent, noteId: string, noteTitle: string) => {
         e.preventDefault();
-        openNoteInCurrentTab(noteId, noteTitle || "Без названия");
+        openNoteInCurrentTab(noteId, noteTitle || t('sidebar.untitled'));
     };
 
     const handleNotesClick = (e: React.MouseEvent) => {
@@ -194,14 +196,14 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                 : "hover:bg-background/50 text-muted-foreground hover:text-foreground",
                             isOpen ? "justify-start px-3 gap-3" : "justify-center p-0 gap-0"
                         )}
-                        title={!isOpen ? "Общий чат" : undefined}
+                        title={!isOpen ? t('sidebar.globalChat') : undefined}
                     >
                         <MessageSquare className="h-5 w-5 shrink-0" />
                         <span className={cn(
                             "whitespace-nowrap transition-all duration-300 font-medium",
                             isOpen ? "opacity-100 translate-x-0 w-auto" : "opacity-0 -translate-x-4 w-0 hidden"
                         )}>
-                            Общий чат
+                            {t('sidebar.globalChat')}
                         </span>
                     </Button>
                 </Link>
@@ -216,14 +218,14 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             : "hover:bg-background/50 text-muted-foreground hover:text-foreground",
                         isOpen ? "w-full justify-start px-3 gap-3" : "w-10 justify-center p-0 gap-0 mx-auto"
                     )}
-                    title={!isOpen ? "Workspace" : undefined}
+                    title={!isOpen ? t('sidebar.notes') : undefined}
                 >
                     <FileText className="h-5 w-5 shrink-0" />
                     <span className={cn(
                         "whitespace-nowrap transition-all duration-300 font-medium",
                         isOpen ? "opacity-100 translate-x-0 w-auto" : "opacity-0 -translate-x-4 w-0 hidden"
                     )}>
-                        Workspace
+                        {t('sidebar.notes')}
                     </span>
                 </Button>
             </div>
@@ -241,16 +243,16 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                 <Input
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Поиск..."
+                                    placeholder={t('sidebar.search')}
                                     className="h-9 w-full min-w-0 text-xs bg-background border-border rounded-lg focus-visible:ring-1 focus-visible:ring-primary/20 shadow-sm pl-9 pr-2 transition-none"
-                                    title="Поиск"
+                                    title={t('sidebar.search')}
                                 />
                             </div>
                             <Button
                                 variant="ghost" size="icon"
                                 onClick={() => setSortDirection(prev => prev === 'Descending' ? 'Ascending' : 'Descending')}
                                 className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background/50 transition-none"
-                                title={sortDirection === 'Descending' ? "Сначала новые" : "Сначала старые"}
+                                title={sortDirection === 'Descending' ? t('sidebar.sortNewest') : t('sidebar.sortOldest')}
                             >
                                 {sortDirection === 'Descending' ? <ArrowDown className="h-4 w-4" /> : <ArrowUp className="h-4 w-4" />}
                             </Button>
@@ -260,7 +262,9 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                         {isLoading ? (
                             <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground"/></div>
                         ) : notes.length === 0 ? (
-                            <div className="text-center text-muted-foreground text-xs py-4 border border-dashed border-border rounded-lg m-1 w-full">Нет заметок</div>
+                            <div className="text-center text-muted-foreground text-xs py-4 border border-dashed border-border rounded-lg m-1 w-full">
+                                {t('sidebar.noNotes')}
+                            </div>
                         ) : (
                             <div className="space-y-1 animate-in fade-in duration-300 flex flex-col w-full max-w-full">
                                 {notes.map((note: NoteListItemDto) => (
@@ -294,10 +298,10 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             "transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center",
                             isOpen ? "h-10 flex-1 px-3 justify-start gap-2" : "h-10 w-10 justify-center p-0 mx-auto"
                         )}
-                        title={!isOpen ? "Настройки" : undefined}
+                        title={!isOpen ? t('sidebar.settings') : undefined}
                     >
                         <Settings className="h-5 w-5 shrink-0" />
-                        {isOpen && <span className="text-xs font-medium truncate">Настройки</span>}
+                        {isOpen && <span className="text-xs font-medium truncate">{t('sidebar.settings')}</span>}
                     </Button>
 
                     <Button
@@ -308,7 +312,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             "transition-all duration-300 rounded-lg shrink-0 text-muted-foreground hover:bg-background hover:text-foreground flex items-center justify-center h-10 w-10 p-0",
                             isOpen ? "" : "mx-auto"
                         )}
-                        title="Смена темы"
+                        title={t('sidebar.toggleTheme')}
                     >
                         {theme === 'dark' ? <Moon className="h-5 w-5 shrink-0" /> : <Sun className="h-5 w-5 shrink-0" />}
                     </Button>
@@ -333,7 +337,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                         {isProfileLoading ? (
                                             <Loader2 className="h-4 w-4 animate-spin opacity-50" />
                                         ) : profile?.avatarUrl ? (
-                                            <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                                            <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
                                         ) : (
                                             displayName.charAt(0).toUpperCase()
                                         )}
@@ -354,7 +358,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             {isProfileLoading ? (
                                 <Loader2 className="h-4 w-4 animate-spin opacity-50" />
                             ) : profile?.avatarUrl ? (
-                                <img src={profile.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                                <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
                             ) : (
                                 displayName.charAt(0).toUpperCase()
                             )}

@@ -1,5 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 import { format } from "date-fns";
+import { ru } from "date-fns/locale/ru";
+import { enUS } from "date-fns/locale/en-US";
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import {
@@ -22,14 +25,6 @@ import { NoteChatPanel } from "@/modules/chat";
 import { AudioPlayer, notesApi, type NoteDetailsDto, type NoteStatus, type NoteListItemDto } from "@/modules/notes";
 import { cn } from "@/shared/lib/utils";
 
-const STATUS_LABELS: Record<NoteStatus, string> = {
-    Pending: "Ожидание",
-    Failed: "Ошибка",
-    Raw: "Черновик",
-    Structured: "Структурировано",
-    Summarized: "Готово",
-};
-
 export type SidebarView = 'info' | 'chat' | 'audio';
 
 interface NoteSidebarProps {
@@ -47,7 +42,15 @@ interface NoteMutationContext {
 }
 
 export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarOpen, sidebarWidth, isResizing, handleDelete }: NoteSidebarProps) => {
+    const { t, i18n } = useTranslation();
     const queryClient = useQueryClient();
+
+    // Функция форматирования даты с учётом локали
+    const formatDate = (dateString: string) => {
+        const dateFormat = t('workspace.dateFormat');
+        const locale = i18n.language === 'ru' ? ru : enUS;
+        return format(new Date(dateString), dateFormat, { locale });
+    };
 
     const actionMutationOptions = {
         onMutate: async (): Promise<NoteMutationContext> => {
@@ -102,6 +105,11 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
     const isStructureDisabled = !note.rawText || note.isProcessing;
     const isSummarizeDisabled = !note.structuredText || note.isProcessing;
 
+    const getStatusLabel = (status: NoteStatus) => t(`note.status.${status}`);
+    const getSourceTypeLabel = (sourceType: string) =>
+        t(`note.sourceType.${sourceType === 'AudioFile' ? 'AudioFile' : 'Text'}`);
+    const getCategoryLabel = (category: string) => t(`note.category.${category}`, { defaultValue: category });
+
     return (
         <aside
             className={cn(
@@ -119,7 +127,7 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                     )}
                 </div>
                 <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] select-none">
-                    {sidebarView === 'chat' ? 'AI Chat' : sidebarView === 'audio' ? 'Audio' : 'Info'}
+                    {t(`note.sidebar.tabs.${sidebarView}`)}
                 </span>
             </div>
 
@@ -129,13 +137,15 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                 <ScrollArea className="flex-1 p-4">
                     {note.sourceType === 'AudioFile' && note.hasSourceFile ? (
                         <div className="space-y-4">
-                            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-0.5 font-mono">Аудиозапись</h4>
+                            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-0.5 font-mono">
+                                {t('note.sidebar.audio.title')}
+                            </h4>
                             <AudioPlayer noteId={note.id} />
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-40 text-muted-foreground opacity-50 italic text-xs text-center font-medium">
                             <FileAudio className="h-8 w-8 mb-2 stroke-[1px]" />
-                            <p>Файл не найден</p>
+                            <p>{t('note.sidebar.audio.notFound')}</p>
                         </div>
                     )}
                 </ScrollArea>
@@ -149,33 +159,37 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                             <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
                                 <ClipboardList className="h-3.5 w-3.5 text-primary" />
                                 <h2 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                                    Свойства
+                                    {t('note.sidebar.properties.title')}
                                 </h2>
                             </div>
                             <div className="p-4 space-y-3">
                                 <InfoRow
-                                    label="Статус"
+                                    label={t('note.sidebar.properties.status')}
                                     icon={<Activity className="h-3.5 w-3.5" />}
-                                    value={STATUS_LABELS[note.status] || note.status}
+                                    value={getStatusLabel(note.status)}
                                 />
                                 <InfoRow
-                                    label="Источник"
+                                    label={t('note.sidebar.properties.source')}
                                     icon={<FileQuestion className="h-3.5 w-3.5" />}
-                                    value={note.sourceType === 'AudioFile' ? 'Аудио' : 'Текст'}
+                                    value={getSourceTypeLabel(note.sourceType)}
                                 />
                                 {note.category && (
-                                    <InfoRow label="Категория" icon={<Tag className="h-3.5 w-3.5" />} value={note.category} />
+                                    <InfoRow
+                                        label={t('note.sidebar.properties.category')}
+                                        icon={<Tag className="h-3.5 w-3.5" />}
+                                        value={getCategoryLabel(note.category)}
+                                    />
                                 )}
                                 <InfoRow
-                                    label="Создана"
+                                    label={t('note.sidebar.properties.createdAt')}
                                     icon={<Calendar className="h-3.5 w-3.5" />}
-                                    value={format(new Date(note.createdAt), "dd.MM.yyyy HH:mm")}
+                                    value={formatDate(note.createdAt)}
                                 />
                                 {note.updatedAt && (
                                     <InfoRow
-                                        label="Изменена"
+                                        label={t('note.sidebar.properties.updatedAt')}
                                         icon={<History className="h-3.5 w-3.5" />}
-                                        value={format(new Date(note.updatedAt), "dd.MM.yyyy HH:mm")}
+                                        value={formatDate(note.updatedAt)}
                                     />
                                 )}
                             </div>
@@ -186,14 +200,15 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                             <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
                                 <Zap className="h-3.5 w-3.5 text-primary" />
                                 <h2 className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                                    Действия
+                                    {t('note.sidebar.actions.title')}
                                 </h2>
                             </div>
                             <div className="p-4 space-y-2">
                                 {note.sourceType === 'AudioFile' && (
                                     <ActionButton
                                         icon={<ScanText className="h-3.5 w-3.5" />}
-                                        label="Транскрибировать"
+                                        label={t('note.sidebar.actions.transcribe')}
+                                        loadingLabel={t('note.sidebar.actions.processing')}
                                         onClick={() => transcribeMutation.mutate(note.id)}
                                         loading={transcribeMutation.isPending}
                                         disabled={isTranscribeDisabled}
@@ -201,14 +216,16 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                                 )}
                                 <ActionButton
                                     icon={<FileChartColumnIncreasing className="h-3.5 w-3.5" />}
-                                    label="Структурировать"
+                                    label={t('note.sidebar.actions.structure')}
+                                    loadingLabel={t('note.sidebar.actions.processing')}
                                     onClick={() => structureMutation.mutate(note.id)}
                                     loading={structureMutation.isPending}
                                     disabled={isStructureDisabled}
                                 />
                                 <ActionButton
                                     icon={<FileJson className="h-3.5 w-3.5" />}
-                                    label="Сделать резюме"
+                                    label={t('note.sidebar.actions.summarize')}
+                                    loadingLabel={t('note.sidebar.actions.processing')}
                                     onClick={() => summarizeMutation.mutate(note.id)}
                                     loading={summarizeMutation.isPending}
                                     disabled={isSummarizeDisabled}
@@ -223,7 +240,7 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                                         className="w-full justify-start text-destructive hover:bg-destructive/10 border-border/60 hover:border-destructive/40 h-9 text-[11px] font-bold transition-all"
                                         onClick={handleDelete}
                                     >
-                                        <Trash2 className="mr-2.5 h-3.5 w-3.5" /> Удалить заметку
+                                        <Trash2 className="mr-2.5 h-3.5 w-3.5" /> {t('note.sidebar.actions.delete')}
                                     </Button>
                                 </div>
                             </div>
@@ -261,7 +278,16 @@ const InfoRow = ({ label, value, icon }: { label: string, value: string, icon: R
     </div>
 );
 
-const ActionButton = ({ icon, label, onClick, loading, disabled }: { icon: React.ReactNode, label: string, onClick: () => void, loading: boolean, disabled?: boolean }) => (
+interface ActionButtonProps {
+    icon: React.ReactNode;
+    label: string;
+    loadingLabel: string;
+    onClick: () => void;
+    loading: boolean;
+    disabled?: boolean;
+}
+
+const ActionButton = ({ icon, label, loadingLabel, onClick, loading, disabled }: ActionButtonProps) => (
     <Button
         variant="outline"
         size="sm"
@@ -275,6 +301,6 @@ const ActionButton = ({ icon, label, onClick, loading, disabled }: { icon: React
         )}>
             {icon}
         </span>
-        {loading ? "Обработка..." : label}
+        {loading ? loadingLabel : label}
     </Button>
 );

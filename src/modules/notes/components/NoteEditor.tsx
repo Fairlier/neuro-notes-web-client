@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
 import { Textarea } from "@/shared/ui/textarea";
 import { cn } from "@/shared/lib/utils";
@@ -16,6 +17,8 @@ interface NoteEditorProps {
 }
 
 export const NoteEditor = ({ note, isLoading, isError, isEditing, displayContent, localContent, setLocalContent, titleInput, setTitleInput }: NoteEditorProps) => {
+    const { t } = useTranslation();
+
     if (isLoading) return null;
     if (isError || !note) return null;
 
@@ -26,11 +29,11 @@ export const NoteEditor = ({ note, isLoading, isError, isEditing, displayContent
                     value={titleInput}
                     onChange={(e) => setTitleInput(e.target.value)}
                     className="text-3xl font-bold text-foreground mb-8 leading-tight tracking-tight outline-none bg-transparent border-none w-full p-0 focus:ring-0 placeholder:text-muted-foreground"
-                    placeholder="Без названия"
+                    placeholder={t('sidebar.untitled')}
                 />
             ) : (
                 <h1 className="text-3xl font-bold text-foreground mb-8 leading-tight tracking-tight cursor-default">
-                    {note?.title || "Без названия"}
+                    {note?.title || t('sidebar.untitled')}
                 </h1>
             )}
 

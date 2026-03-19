@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 import { usersApi } from "@/modules/users/api/usersApi";
 import { systemApi } from "@/modules/system/api/systemApi";
 import type { UserAIProfileResponse, AIOperationSettingsDto } from "@/modules/users/types/usersTypes";
@@ -18,14 +19,17 @@ import {
     Trash2,
     Settings2,
     Languages,
-    Sparkles,
+    Zap,
     RefreshCcw,
     Settings,
     ScanText,
-    type LucideIcon, FileJson,
-    MessageSquare, MessageSquareText, FileChartColumnIncreasing
+    type LucideIcon,
+    FileJson,
+    MessageSquare,
+    MessageSquareText,
+    FileChartColumnIncreasing
 } from "lucide-react";
-import {Checkbox} from "@/shared/ui/checkbox.tsx";
+import { Checkbox } from "@/shared/ui/checkbox.tsx";
 
 const BUTTON_CLASS = "w-full sm:w-[220px] h-10 flex items-center justify-center gap-2 transition-all shrink-0";
 
@@ -35,6 +39,7 @@ interface SettingsFormProps {
 }
 
 function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
     const [formData, setFormData] = useState<UserAIProfileResponse>(initialData);
     const [successMsg, setSuccessMsg] = useState("");
@@ -55,7 +60,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
         mutationFn: usersApi.updateAiProfile,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['userAiProfile'] });
-            setSuccessMsg("Настройки успешно сохранены");
+            setSuccessMsg(t('settings.successMsg'));
             setResetMsg("");
             setTimeout(() => setSuccessMsg(""), 3000);
         }
@@ -63,9 +68,13 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
 
     const resetProfileMutation = useMutation({
         mutationFn: usersApi.resetAiProfile,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['userAiProfile'] });
-            setResetMsg("Настройки успешно сброшены");
+        onSuccess: async () => {
+            await queryClient.invalidateQueries({ queryKey: ['userAiProfile'] });
+            const newData = queryClient.getQueryData<UserAIProfileResponse>(['userAiProfile']);
+            if (newData) {
+                setFormData(newData);
+            }
+            setResetMsg(t('settings.resetMsg'));
             setSuccessMsg("");
             setTimeout(() => setResetMsg(""), 3000);
         }
@@ -86,27 +95,29 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
         }));
     };
 
-    const renderOperationItem = (title: string, opKey: keyof UserAIProfileResponse, providers: string[], Icon: LucideIcon) => {
+    const renderOperationItem = (titleKey: string, opKey: keyof UserAIProfileResponse, providers: string[], Icon: LucideIcon) => {
         const opData = formData[opKey] as AIOperationSettingsDto || {};
         return (
             <div className="p-5 rounded-2xl border border-border bg-muted/10 space-y-4">
                 <div className="flex items-center gap-2 border-b border-border/40 pb-3 mb-1">
                     <Icon className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-bold uppercase tracking-wider text-foreground">{title}</span>
+                    <span className="text-sm font-bold uppercase tracking-wider text-foreground">
+                        {t(`settings.operations.${titleKey}`)}
+                    </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-sm font-semibold flex items-center gap-2 ml-1">
                             <Cpu className="h-3.5 w-3.5 text-primary" />
-                            Провайдер
+                            {t('settings.operations.provider')}
                         </label>
                         <Select
                             value={(formData[opKey === 'transcription' ? 'transcriptionProvider' : opKey === 'structuring' ? 'structureProvider' : opKey === 'summarization' ? 'summaryProvider' : opKey === 'globalChat' ? 'globalChatProvider' : 'noteChatProvider' as keyof UserAIProfileResponse] as string) || ""}
                             onValueChange={(v) => setFormData({...formData, [opKey === 'transcription' ? 'transcriptionProvider' : opKey === 'structuring' ? 'structureProvider' : opKey === 'summarization' ? 'summaryProvider' : opKey === 'globalChat' ? 'globalChatProvider' : 'noteChatProvider' as keyof UserAIProfileResponse]: v})}
                         >
                             <SelectTrigger className="bg-muted/20 border-border/50 h-11">
-                                <SelectValue placeholder="По умолчанию" />
+                                <SelectValue placeholder={t('settings.operations.providerDefault')} />
                             </SelectTrigger>
                             <SelectContent>
                                 {providers.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
@@ -116,7 +127,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                     <div className="space-y-2">
                         <label className="text-sm font-semibold flex items-center gap-2 ml-1">
                             <Languages className="h-3.5 w-3.5 text-primary" />
-                            Язык (ISO)
+                            {t('settings.operations.language')}
                         </label>
                         <Input
                             value={opData.targetLanguage || ""}
@@ -140,7 +151,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                             htmlFor={`${opKey}-custom-prompt`}
                             className="text-sm font-medium text-muted-foreground cursor-pointer select-none"
                         >
-                            Кастомный промт
+                            {t('settings.operations.customPrompt')}
                         </label>
                     </div>
 
@@ -149,7 +160,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                             value={opData.customPrompt || ""}
                             onChange={(e) => updateOperationSetting(opKey, 'customPrompt', e.target.value)}
                             className="min-h-[100px] bg-muted/20 border-border/50 resize-none animate-in fade-in slide-in-from-top-1"
-                            placeholder="Введите инструкции для ИИ..."
+                            placeholder={t('settings.operations.customPromptPlaceholder')}
                         />
                     )}
                 </div>
@@ -164,13 +175,15 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <Settings2 className="h-4 w-4 text-primary" />
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Общие параметры</h2>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                        {t('settings.general.title')}
+                    </h2>
                 </div>
                 <div className="p-6">
                     <div className="space-y-2 max-w-[200px]">
                         <label className="text-sm font-semibold flex items-center gap-2 ml-1">
                             <Languages className="h-3.5 w-3.5 text-primary" />
-                            Глобальный язык (ISO)
+                            {t('settings.general.globalLanguage')}
                         </label>
                         <Input
                             value={formData.aiOperationLanguage}
@@ -185,15 +198,17 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
             {/* 2. ОПЕРАЦИИ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Настройка операций</h2>
+                    <Zap className="h-4 w-4 text-primary" />
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                        {t('settings.operations.title')}
+                    </h2>
                 </div>
                 <div className="p-6 space-y-5">
-                    {renderOperationItem("Транскрибация", "transcription", systemConfig.providers.transcription, ScanText) }
-                    {renderOperationItem("Структурирование", "structuring", systemConfig.providers.structure, FileChartColumnIncreasing)}
-                    {renderOperationItem("Саммаризация", "summarization", systemConfig.providers.summary, FileJson)}
-                    {renderOperationItem("Общий чат", "globalChat", systemConfig.providers.chat, MessageSquare)}
-                    {renderOperationItem("Чат по заметке", "noteChat", systemConfig.providers.chat, MessageSquareText)}
+                    {renderOperationItem("transcription", "transcription", systemConfig.providers.transcription, ScanText)}
+                    {renderOperationItem("structuring", "structuring", systemConfig.providers.structure, FileChartColumnIncreasing)}
+                    {renderOperationItem("summarization", "summarization", systemConfig.providers.summary, FileJson)}
+                    {renderOperationItem("globalChat", "globalChat", systemConfig.providers.chat, MessageSquare)}
+                    {renderOperationItem("noteChat", "noteChat", systemConfig.providers.chat, MessageSquareText)}
                 </div>
             </section>
 
@@ -201,24 +216,36 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <KeyRound className="h-4 w-4 text-primary" />
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Ключи провайдеров</h2>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                        {t('settings.providerKeys.title')}
+                    </h2>
                 </div>
                 <div className="p-6 space-y-6">
                     {/* Форма добавления */}
                     <div className="flex flex-col sm:flex-row gap-3 items-end bg-muted/10 p-5 rounded-2xl">
                         <div className="w-full sm:flex-1 space-y-2">
-                            <label className="text-sm font-semibold ml-1">Провайдер</label>
+                            <label className="text-sm font-semibold ml-1">
+                                {t('settings.providerKeys.provider')}
+                            </label>
                             <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-                                <SelectTrigger className="bg-background h-11"><SelectValue placeholder="Выберите провайдера" /></SelectTrigger>
-                                <SelectContent>{allProviders.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                                <SelectTrigger className="bg-background h-11">
+                                    <SelectValue placeholder={t('settings.providerKeys.selectProvider')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allProviders.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                </SelectContent>
                             </Select>
                         </div>
                         <div className="w-full sm:flex-1 space-y-2">
-                            <label className="text-sm font-semibold ml-1">Ключ</label>
+                            <label className="text-sm font-semibold ml-1">
+                                {t('settings.providerKeys.key')}
+                            </label>
                             <Input value={newSettingKey} onChange={e => setNewSettingKey(e.target.value)} className="bg-background h-11"/>
                         </div>
                         <div className="w-full sm:flex-[2] space-y-2">
-                            <label className="text-sm font-semibold ml-1">Значение</label>
+                            <label className="text-sm font-semibold ml-1">
+                                {t('settings.providerKeys.value')}
+                            </label>
                             <div className="flex gap-2">
                                 <Input value={newSettingValue} onChange={e => setNewSettingValue(e.target.value)} className="bg-background h-11"/>
                                 <Button type="button" size="icon" className="h-11 w-11 shrink-0" onClick={() => {
@@ -280,11 +307,11 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                             type="button"
                             variant="ghost"
                             className={`${BUTTON_CLASS} text-destructive hover:bg-destructive/10 hover:text-destructive justify-start px-4`}
-                            onClick={() => { if(window.confirm("Сбросить настройки?")) resetProfileMutation.mutate(); }}
+                            onClick={() => { if(window.confirm(t('settings.confirmReset'))) resetProfileMutation.mutate(); }}
                             disabled={resetProfileMutation.isPending}
                         >
                             {resetProfileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-                            Сбросить настройки
+                            {t('settings.actions.reset')}
                         </Button>
 
                         <Button
@@ -293,13 +320,13 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                             disabled={updateProfileMutation.isPending}
                         >
                             {updateProfileMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                            Сохранить настройки
+                            {t('settings.actions.save')}
                         </Button>
                     </div>
                 </div>
             </section>
 
-            {/* 5. УВЕДОМЛЕНИЯ (отдельная карточка под действиями) */}
+            {/* 5. УВЕДОМЛЕНИЯ */}
             {(successMsg || resetMsg) && (
                 <section className={`
                     border rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4
@@ -332,6 +359,8 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
 }
 
 export default function SettingsPage() {
+    const { t } = useTranslation();
+
     const { data: aiProfile, isLoading: isProfileLoading } = useQuery<UserAIProfileResponse>({
         queryKey: ['userAiProfile'],
         queryFn: usersApi.getAiProfile,
@@ -355,7 +384,9 @@ export default function SettingsPage() {
                     <div className="p-2.5 bg-primary/10 rounded-xl">
                         <Settings className="h-7 w-7 text-primary" />
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Настройки ИИ</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                        {t('settings.title')}
+                    </h1>
                 </div>
                 <SettingsForm initialData={aiProfile} systemConfig={systemConfig} key={aiProfile.aiOperationLanguage} />
             </div>

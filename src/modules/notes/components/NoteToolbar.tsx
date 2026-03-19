@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru } from "date-fns/locale/ru";
+import { enUS } from "date-fns/locale/en-US";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { cn } from "@/shared/lib/utils";
@@ -8,7 +10,12 @@ import { type NoteDetailsDto, type NoteStatus } from "@/modules/notes";
 
 type ViewMode = 'raw' | 'structured' | 'summary' | 'error';
 
-const StatusBadge = ({ status }: { status: NoteStatus }) => {
+interface StatusBadgeProps {
+    status: NoteStatus;
+    label: string;
+}
+
+const StatusBadge = ({ status, label }: StatusBadgeProps) => {
     const styles = {
         'Pending': 'text-muted-foreground bg-muted/50 border-muted/50',
         'Failed': 'text-red-700 bg-red-50 border-red-100 dark:bg-red-950/30 dark:text-red-400 dark:border-red-900/50',
@@ -22,7 +29,7 @@ const StatusBadge = ({ status }: { status: NoteStatus }) => {
             "inline-flex items-center px-2.5 h-8 text-[11px] font-medium rounded-md border select-none transition-colors whitespace-nowrap flex-shrink-0",
             styles
         )}>
-            {status}
+            {label}
         </span>
     );
 };
@@ -36,27 +43,43 @@ interface NoteToolbarProps {
 }
 
 export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEditMode }: NoteToolbarProps) => {
-    const availableModes: { id: ViewMode; label: string; icon: LucideIcon }[] = [];
+    const { t, i18n } = useTranslation();
+
+    // Функция форматирования даты с учётом локали
+    const formatDate = (dateString: string) => {
+        const locale = i18n.language === 'ru' ? ru : enUS;
+        // Используем более читаемый формат для тулбара
+        const dateFormat = i18n.language === 'ru' ? "d MMM yyyy, HH:mm" : "MMM d, yyyy, HH:mm";
+        return format(new Date(dateString), dateFormat, { locale });
+    };
+
+    // Получение локализованного названия статуса
+    const getStatusLabel = (status: NoteStatus) => t(`note.status.${status}`);
+
+    // Получение локализованного названия режима просмотра
+    const getViewModeLabel = (mode: ViewMode) => t(`note.viewMode.${mode}`);
+
+    const availableModes: { id: ViewMode; icon: LucideIcon }[] = [];
 
     if (note.status === 'Failed') {
-        availableModes.push({ id: 'error', label: 'Error', icon: AlertCircle });
+        availableModes.push({ id: 'error', icon: AlertCircle });
     }
     availableModes.push(
-        { id: 'raw', label: 'Raw', icon: AlignLeft },
-        { id: 'structured', label: 'Structured', icon: FileChartColumnIncreasing },
-        { id: 'summary', label: 'Summary', icon: FileJson }
+        { id: 'raw', icon: AlignLeft },
+        { id: 'structured', icon: FileChartColumnIncreasing },
+        { id: 'summary', icon: FileJson }
     );
 
     return (
         <div className="h-10 border-b border-border bg-background flex items-center justify-between px-4 flex-shrink-0 select-none min-w-0">
             {/* ЛЕВАЯ ЧАСТЬ: СТАТУС И ДАТА */}
             <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-                <StatusBadge status={note.status} />
+                <StatusBadge status={note.status} label={getStatusLabel(note.status)} />
 
                 <Separator orientation="vertical" className="h-4 mx-1 opacity-50 flex-shrink-0" />
 
                 <span className="text-[11px] text-muted-foreground/70 font-normal whitespace-nowrap overflow-hidden text-ellipsis">
-                    {format(new Date(note.updatedAt || note.createdAt), "d MMM yyyy, HH:mm", { locale: ru })}
+                    {formatDate(note.updatedAt || note.createdAt)}
                 </span>
             </div>
 
@@ -83,7 +106,7 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
                                 )}
                             >
                                 <Icon className="h-3.5 w-3.5 flex-shrink-0" />
-                                <span>{mode.label}</span>
+                                <span>{getViewModeLabel(mode.id)}</span>
                             </button>
                         );
                     })}

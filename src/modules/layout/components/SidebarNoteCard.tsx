@@ -1,5 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { format } from "date-fns";
-import { ru } from "date-fns/locale";
+import { ru } from "date-fns/locale/ru";
+import { enUS } from "date-fns/locale/en-US";
 import { FileText, FileAudio, Calendar } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -20,12 +22,21 @@ const statusBorderColors: Record<NoteStatus, string> = {
 };
 
 export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProps) => {
+    const { t, i18n } = useTranslation();
+
     const dateToUse = note.updatedAt ? new Date(note.updatedAt) : new Date(note.createdAt);
     const isAudio = note.sourceType === 'AudioFile';
 
-    const formattedCategory = note.category
-        ? note.category.charAt(0).toUpperCase() + note.category.slice(1).toLowerCase()
-        : null;
+    // Функция форматирования даты с учётом локали
+    const formatDate = (date: Date) => {
+        const locale = i18n.language === 'ru' ? ru : enUS;
+        const dateFormat = i18n.language === 'ru' ? "d MMM yyyy" : "MMM d, yyyy";
+        return format(date, dateFormat, { locale });
+    };
+
+    // Получение локализованной категории
+    const getCategoryLabel = (category: string) =>
+        t(`note.category.${category}`, { defaultValue: category });
 
     return (
         <Button
@@ -64,12 +75,11 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
                     "truncate text-sm font-medium flex-1 leading-tight transition-colors",
                     isActive ? "text-foreground" : "group-hover:text-primary"
                 )}>
-                    {note.title || "Без названия"}
+                    {note.title || t('sidebar.untitled')}
                 </span>
             </div>
 
             {/* 3. Метаданные (Дата и категория) */}
-            {/* Используем тот же gap-2.5, что и в верхней строке, убрали pl-0.5 */}
             <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground w-full">
                 {/* Обертка w-7 для идеальной центровки под верхней иконкой */}
                 <div className="w-7 flex justify-center shrink-0">
@@ -77,12 +87,11 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
                 </div>
 
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span>{format(dateToUse, "d MMM yyyy", { locale: ru })}</span>
+                    <span>{formatDate(dateToUse)}</span>
 
-                    {formattedCategory && (
-                        // Убрали класс uppercase
+                    {note.category && (
                         <span className="truncate bg-muted/60 px-1.5 py-0.5 rounded-sm text-[9px] tracking-wider font-semibold">
-                            {formattedCategory}
+                            {getCategoryLabel(note.category)}
                         </span>
                     )}
                 </div>

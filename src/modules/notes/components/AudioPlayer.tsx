@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { notesApi } from "@/modules/notes";
 
 export const AudioPlayer = ({ noteId }: { noteId: string }) => {
+    const { t } = useTranslation();
     const [audioUrl, setAudioUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -33,8 +35,8 @@ export const AudioPlayer = ({ noteId }: { noteId: string }) => {
         };
     }, [noteId]);
 
-    if (isLoading) return <div className="flex items-center gap-2 text-xs text-muted-foreground py-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> Загрузка аудио...</div>;
-    if (error || !audioUrl) return <div className="text-xs text-destructive py-2">Не удалось загрузить аудиофайл</div>;
+    if (isLoading) return <div className="flex items-center gap-2 text-xs text-muted-foreground py-2"><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('audioPlayer.loading')}</div>;
+    if (error || !audioUrl) return <div className="text-xs text-destructive py-2">{t('audioPlayer.error')}</div>;
 
     return <audio controls className="w-full h-8 mt-1" src={audioUrl} />;
 };

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 import { notesApi } from "../api/notesApi";
 import { useAudioRecorder } from "@/modules/notes";
 import { NoteCard } from "./NoteCard";
@@ -25,6 +26,7 @@ const DEFAULT_FILTERS: GetNotesParams = {
 };
 
 export const NoteCreator = () => {
+    const { t, i18n } = useTranslation();
     const queryClient = useQueryClient();
     const { openNoteInCurrentTab } = useTabs();
 
@@ -45,6 +47,12 @@ export const NoteCreator = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isFiltersOpen, setFiltersOpen] = useState(false);
+
+    // Функция форматирования даты для названия аудиозаметки
+    const formatDateForTitle = () => {
+        const locale = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
+        return new Date().toLocaleString(locale);
+    };
 
     useEffect(() => {
         const textarea = textareaRef.current;
@@ -68,7 +76,6 @@ export const NoteCreator = () => {
         hasNextPage,
         isFetchingNextPage
     } = useInfiniteQuery({
-        // Убираем filters.page из ключа, чтобы при скролле не создавался новый кэш, а добавлялись страницы
         queryKey: ['notes', 'search', { ...filters, page: undefined }, debouncedSearch],
         queryFn: ({ pageParam = 1 }) =>
             notesApi.getAll({ ...filters, page: pageParam, searchTerm: debouncedSearch || undefined }),
@@ -142,7 +149,7 @@ export const NoteCreator = () => {
         if (!content.trim()) return;
         const finalTitle = title.trim()
             ? title.trim()
-            : content.split('\n')[0].substring(0, 50) || "Новая заметка";
+            : content.split('\n')[0].substring(0, 50) || t('noteCreator.defaultTitle');
         createTextMutation.mutate({ title: finalTitle, content });
     };
 
@@ -150,7 +157,7 @@ export const NoteCreator = () => {
         if (!audioBlob) return;
         const finalTitle = title.trim()
             ? title.trim()
-            : `Аудиозаметка от ${new Date().toLocaleString('ru-RU')}`;
+            : t('noteCreator.audioNoteTitle', { date: formatDateForTitle() });
         const audioFile = audioBlob instanceof File
             ? audioBlob
             : new File([audioBlob], "recording.webm", {
@@ -193,12 +200,12 @@ export const NoteCreator = () => {
             <ScrollArea className="flex-1" style={{ scrollbarGutter: 'stable' }}>
                 <div className="border-b border-border bg-background">
                     <div className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
-                        <h1 className="text-3xl font-light text-center mb-6">Что вы хотите создать?</h1>
+                        <h1 className="text-3xl font-bold text-center mb-6">{t('noteCreator.title')}</h1>
 
                         <div className="relative bg-muted/30 rounded-lg border border-border shadow-sm focus-within:ring-2 focus-within:ring-primary/20 mb-4 transition-all">
                             <Input
                                 value={title} onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Название заметки (необязательно)"
+                                placeholder={t('noteCreator.titlePlaceholder')}
                                 className="w-full bg-transparent border-none focus-visible:ring-0 text-lg px-4 py-3"
                             />
                         </div>
@@ -216,7 +223,8 @@ export const NoteCreator = () => {
                                             )}
                                             <audio controls src={URL.createObjectURL(audioBlob)} className="w-full max-w-md h-10" />
                                             <Button variant="ghost" size="sm" onClick={cancelAudio} className="text-destructive hover:bg-destructive/10 mt-2">
-                                                <Trash2 className="h-4 w-4 mr-2" /> Удалить {audioBlob instanceof File ? 'файл' : 'запись'}
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                {audioBlob instanceof File ? t('noteCreator.deleteFile') : t('noteCreator.deleteRecording')}
                                             </Button>
                                         </div>
                                     ) : (
@@ -256,7 +264,7 @@ export const NoteCreator = () => {
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
                                     onKeyDown={handleKeyDown}
-                                    placeholder="Напишите заметку или идею..."
+                                    placeholder={t('noteCreator.contentPlaceholder')}
                                     className="w-full min-h-[200px] resize-none bg-transparent border-none focus-visible:ring-0 text-lg p-6 overflow-y-auto scrollbar-thin"
                                 />
                             )}
@@ -268,7 +276,9 @@ export const NoteCreator = () => {
                                             <Button variant="ghost" size="icon" className="rounded-full"><Paperclip className="h-4 w-4" /></Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent>
-                                            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Загрузить аудиофайл</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                                                <Upload className="mr-2 h-4 w-4" /> {t('noteCreator.uploadAudio')}
+                                            </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
 
@@ -282,7 +292,7 @@ export const NoteCreator = () => {
                                             }
                                             setIsRecordingMode(!isRecordingMode);
                                         }}
-                                        title={isRecordingMode ? "Переключиться на текст" : "Переключиться на голос"}
+                                        title={isRecordingMode ? t('noteCreator.switchToText') : t('noteCreator.switchToVoice')}
                                     >
                                         {isRecordingMode ? <Type className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                                     </Button>
@@ -304,7 +314,7 @@ export const NoteCreator = () => {
                     <div className="flex items-center gap-3 mb-4">
                         <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary"><Search className="h-5 w-5" /></div>
                         <div>
-                            <h2 className="text-lg font-bold">Поиск заметок</h2>
+                            <h2 className="text-lg font-bold">{t('noteCreator.search.title')}</h2>
                         </div>
                     </div>
 
@@ -312,7 +322,7 @@ export const NoteCreator = () => {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input
                             value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder={filters.searchMode === 'Semantic' ? "AI Поиск по смыслу..." : "Поиск по названию..."}
+                            placeholder={filters.searchMode === 'Semantic' ? t('noteCreator.search.placeholderSemantic') : t('noteCreator.search.placeholderTitle')}
                             className="w-full h-12 pl-12 pr-32 bg-background border-border rounded-lg"
                         />
                         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -324,7 +334,11 @@ export const NoteCreator = () => {
 
                     <Collapsible open={isFiltersOpen} onOpenChange={setFiltersOpen}>
                         <CollapsibleTrigger asChild>
-                            <Button variant="ghost" size="sm"><SlidersHorizontal className="mr-2 h-3.5 w-3.5" /> Фильтры <ChevronDown className={cn("ml-2 h-3.5 w-3.5", isFiltersOpen && "rotate-180")} /></Button>
+                            <Button variant="ghost" size="sm">
+                                <SlidersHorizontal className="mr-2 h-3.5 w-3.5" />
+                                {t('noteCreator.filters.button')}
+                                <ChevronDown className={cn("ml-2 h-3.5 w-3.5", isFiltersOpen && "rotate-180")} />
+                            </Button>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
                             <NoteFilters
@@ -342,8 +356,8 @@ export const NoteCreator = () => {
                         ) : allNotes.length === 0 ? (
                             <div className="text-center py-40 text-muted-foreground">
                                 <FileQuestion className="h-10 w-10 mx-auto mb-4 opacity-50" />
-                                <p className="text-lg">Заметки не найдены</p>
-                                <p className="text-sm opacity-70">Попробуйте изменить параметры фильтрации</p>
+                                <p className="text-lg">{t('noteCreator.search.notFound')}</p>
+                                <p className="text-sm opacity-70">{t('noteCreator.search.notFoundHint')}</p>
                             </div>
                         ) : (
                             <>

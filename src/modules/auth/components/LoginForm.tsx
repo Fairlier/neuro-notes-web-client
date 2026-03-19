@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/modules/auth";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Loader2, Mail, Lock, AlertCircle } from "lucide-react";
 
 export const LoginForm = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -26,9 +28,9 @@ export const LoginForm = () => {
             console.error("Login error", err);
 
             if (err instanceof Error) {
-                setError(err.message || "Неверный email или пароль");
+                setError(err.message || t('login.error'));
             } else {
-                setError("Неверный email или пароль");
+                setError(t('login.error'));
             }
         } finally {
             setIsLoading(false);
@@ -41,8 +43,8 @@ export const LoginForm = () => {
                 <div className="h-12 w-12 bg-primary text-primary-foreground rounded-lg flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-sm">
                     N
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight">С возвращением</h1>
-                <p className="text-sm text-muted-foreground mt-2">Войдите в свой аккаунт NeuroNotes</p>
+                <h1 className="text-2xl font-bold tracking-tight">{t('login.title')}</h1>
+                <p className="text-sm text-muted-foreground mt-2">{t('login.subtitle')}</p>
             </div>
 
             {error && (
@@ -54,7 +56,7 @@ export const LoginForm = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Email</label>
+                    <label className="text-sm font-medium text-foreground">{t('login.emailLabel')}</label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -62,14 +64,14 @@ export const LoginForm = () => {
                             required
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="name@example.com"
+                            placeholder={t('login.emailPlaceholder')}
                             className="pl-10 bg-background"
                         />
                     </div>
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">Пароль</label>
+                    <label className="text-sm font-medium text-foreground">{t('login.passwordLabel')}</label>
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -85,14 +87,14 @@ export const LoginForm = () => {
 
                 <Button type="submit" className="w-full mt-6" disabled={isLoading}>
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {isLoading ? "Вход..." : "Войти"}
+                    {isLoading ? t('login.submitting') : t('login.submit')}
                 </Button>
             </form>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
-                Нет аккаунта?{" "}
+                {t('login.noAccount')}{" "}
                 <Link to="/register" className="text-primary hover:underline font-medium">
-                    Зарегистрироваться
+                    {t('login.register')}
                 </Link>
             </div>
         </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from 'react-i18next';
 
 import {
     notesApi,
@@ -15,11 +16,12 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Button } from "@/shared/ui/button";
 import { File, Plus, X, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import type {UpdateNoteRequest} from "@/modules/notes/types/notesTypes.ts";
+import type { UpdateNoteRequest } from "@/modules/notes/types/notesTypes.ts";
 
 type ViewMode = 'raw' | 'structured' | 'summary' | 'error';
 
 export default function NoteWorkspace() {
+    const { t } = useTranslation();
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
 
@@ -57,15 +59,15 @@ export default function NoteWorkspace() {
             if (id) closeTab(id);
         },
         onError: (error) => {
-            console.error("Ошибка при удалении:", error);
-            alert("Не удалось удалить заметку. Попробуйте снова.");
+            console.error("Delete error:", error);
+            alert(t('workspace.deleteError'));
         }
     });
 
     const handleDelete = () => {
         if (!id || id === 'new') return;
 
-        if (window.confirm("Вы уверены, что хотите удалить эту заметку? Это действие нельзя отменить.")) {
+        if (window.confirm(t('workspace.confirmDelete'))) {
             deleteMutation.mutate(id);
         }
     };
@@ -90,11 +92,11 @@ export default function NoteWorkspace() {
         switch (viewMode) {
             case 'summary': return note.summaryText || "";
             case 'structured': return note.structuredText || "";
-            case 'error': return note.errorMessage || "Ошибка отсутствует";
+            case 'error': return note.errorMessage || t('note.noError');
             case 'raw': return note.rawText || "";
             default: return "";
         }
-    }, [note, viewMode]);
+    }, [note, viewMode, t]);
 
     const [prevViewMode, setPrevViewMode] = useState<ViewMode>(viewMode);
     if (viewMode !== prevViewMode) {
@@ -141,9 +143,9 @@ export default function NoteWorkspace() {
 
     useEffect(() => {
         if (id && id !== 'new' && note) {
-            openNoteInCurrentTab(id, note.title || "Без названия");
+            openNoteInCurrentTab(id, note.title || t('workspace.untitled'));
         }
-    }, [id, note?.title, openNoteInCurrentTab]);
+    }, [id, note?.title, openNoteInCurrentTab, t]);
 
     const isCreating = id === 'new' || (!id && tabs.length === 0);
 

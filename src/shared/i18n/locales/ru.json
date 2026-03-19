@@ -1,15 +1,219 @@
 {
   "profile": {
     "title": "Настройки профиля",
-    "avatar": "Аватар профиля",
+    "avatar": "Аватар пользователя",
     "nickname": "Псевдоним",
     "interfaceLanguage": "Язык интерфейса",
-    "selectInterfaceLanguage" : "Выберите язык",
-    "saveChanges": "Сохранить изменения"
+    "selectInterfaceLanguage": "Выберите язык",
+    "saveChanges": "Сохранить изменения",
+    "successMsg": "Профиль успешно обновлен",
+    "changeAvatar": "Изменить аватар",
+    "deleteAvatar": "Удалить аватар",
+    "endSession": "Завершение сеанса",
+    "logoutText": "Выход из аккаунта на этом устройстве",
+    "logout": "Выйти из аккаунта",
+    "userSettings": "Настройки пользователя"
   },
   "sidebar": {
     "globalChat": "Общий чат",
-    "workspace": "Workspace",
-    "settings": "Настройки"
+    "notes": "Заметки",
+    "settings": "Настройки",
+    "search": "Поиск...",
+    "noNotes": "Нет заметок",
+    "untitled": "Без названия",
+    "sortNewest": "Сначала новые",
+    "sortOldest": "Сначала старые",
+    "toggleTheme": "Смена темы"
+  },
+  "settings": {
+    "title": "Настройки ИИ",
+    "successMsg": "Настройки успешно сохранены",
+    "resetMsg": "Настройки успешно сброшены",
+    "confirmReset": "Сбросить настройки?",
+    "general": {
+      "title": "Общие параметры",
+      "globalLanguage": "Глобальный язык (ISO)"
+    },
+    "operations": {
+      "title": "Настройка операций",
+      "provider": "Провайдер",
+      "providerDefault": "По умолчанию",
+      "language": "Язык (ISO)",
+      "customPrompt": "Кастомный промт",
+      "customPromptPlaceholder": "Введите инструкции для ИИ...",
+      "transcription": "Транскрибация",
+      "structuring": "Структурирование",
+      "summarization": "Саммаризация",
+      "globalChat": "Общий чат",
+      "noteChat": "Чат по заметке"
+    },
+    "providerKeys": {
+      "title": "Ключи провайдеров",
+      "provider": "Провайдер",
+      "selectProvider": "Выберите провайдера",
+      "key": "Ключ",
+      "value": "Значение"
+    },
+    "actions": {
+      "reset": "Сбросить настройки",
+      "save": "Сохранить настройки"
+    }
+  },
+  "globalChat": {
+    "title": "Общий чат",
+    "empty": "Чат пуст",
+    "placeholder": "Задайте вопрос по заметкам...",
+    "clearHistory": "Очистить историю",
+    "confirmClear": "Вы уверены, что хотите очистить историю чата?",
+    "error": {
+      "title": "Ошибка загрузки чата",
+      "description": "Не удалось подключиться к серверу чата. Проверьте, запущен ли бэкенд.",
+      "refresh": "Обновить страницу",
+      "sendFailed": "Не удалось отправить сообщение."
+    }
+  },
+  "noteChat": {
+    "placeholder": "Задать вопрос по заметке...",
+    "clearHistory": "Очистить историю",
+    "confirmClear": "Вы уверены, что хотите очистить историю переписки?"
+  },
+  "note": {
+    "status": {
+      "Pending": "Ожидание",
+      "Failed": "Ошибка",
+      "Raw": "Черновик",
+      "Structured": "Структурировано",
+      "Summarized": "Обобщено"
+    },
+    "sourceType": {
+      "AudioFile": "Аудио",
+      "Text": "Текст"
+    },
+    "category": {
+      "Finance": "Финансы",
+      "Other": "Другое",
+      "Work": "Работа",
+      "Study": "Учёба",
+      "Idea": "Идея",
+      "Personal": "Личное",
+      "Reference": "Справка"
+    },
+    "viewMode": {
+      "raw": "Черновик",
+      "structured": "Конспект",
+      "summary": "Резюме",
+      "error": "Ошибка"
+    },
+    "noError": "Ошибка отсутствует",
+    "sidebar": {
+      "tabs": {
+        "info": "Информация",
+        "chat": "Чат по заметке",
+        "audio": "Аудиофайл"
+      },
+      "properties": {
+        "title": "Свойства заметки",
+        "status": "Статус",
+        "source": "Источник",
+        "category": "Категория",
+        "createdAt": "Создана",
+        "updatedAt": "Изменена"
+      },
+      "actions": {
+        "title": "Операции с заметкой",
+        "transcribe": "Транскрибировать",
+        "structure": "Структурировать",
+        "summarize": "Резюмировать",
+        "delete": "Удалить заметку",
+        "processing": "Обработка"
+      },
+      "audio": {
+        "title": "Аудиозапись",
+        "notFound": "Файл не найден"
+      }
+    }
+  },
+  "workspace": {
+    "confirmDelete": "Вы уверены, что хотите удалить эту заметку? Это действие нельзя отменить.",
+    "deleteError": "Не удалось удалить заметку. Попробуйте снова.",
+    "untitled": "Без названия",
+    "dateFormat": "dd.MM.yyyy HH:mm"
+  },
+  "noteCreator": {
+    "title": "Что вы хотите создать?",
+    "titlePlaceholder": "Название заметки (необязательно)",
+    "contentPlaceholder": "Напишите заметку или идею...",
+    "defaultTitle": "Новая заметка",
+    "audioNoteTitle": "Аудиозаметка от {{date}}",
+    "uploadAudio": "Загрузить аудиофайл",
+    "deleteFile": "Удалить файл",
+    "deleteRecording": "Удалить запись",
+    "switchToText": "Переключиться на текст",
+    "switchToVoice": "Переключиться на голос",
+    "search": {
+      "title": "Поиск заметок",
+      "placeholderSemantic": "Поиск по смыслу...",
+      "placeholderTitle": "Поиск по названию...",
+      "notFound": "Заметки не найдены",
+      "notFoundHint": "Попробуйте изменить параметры фильтрации"
+    },
+    "filters": {
+      "button": "Фильтры",
+      "title": "Параметры",
+      "reset": "Сбросить",
+      "status": {
+        "label": "Статус",
+        "all": "Все статусы"
+      },
+      "type": {
+        "label": "Тип",
+        "all": "Все типы",
+        "text": "Текст",
+        "audio": "Аудио"
+      },
+      "category": {
+        "label": "Категория",
+        "all": "Все категории"
+      },
+      "sort": {
+        "label": "Сортировка",
+        "aiSort": "AI Сортировка",
+        "byUpdatedAt": "Дате обновления",
+        "byCreatedAt": "Дате создания",
+        "byTitle": "Названию",
+        "descending": "По убыванию",
+        "ascending": "По возрастанию"
+      }
+    }
+  },
+  "audioPlayer": {
+    "loading": "Загрузка аудио...",
+    "error": "Не удалось загрузить аудиофайл"
+  },
+  "login": {
+    "title": "С возвращением",
+    "subtitle": "Войдите в свой аккаунт NeuroNotes",
+    "emailLabel": "Email",
+    "emailPlaceholder": "name@example.com",
+    "passwordLabel": "Пароль",
+    "submit": "Войти",
+    "submitting": "Вход...",
+    "error": "Неверный email или пароль",
+    "noAccount": "Нет аккаунта?",
+    "register": "Зарегистрироваться"
+  },
+  "register": {
+    "title": "Создать аккаунт",
+    "subtitle": "Начните работу с NeuroNotes",
+    "emailLabel": "Email",
+    "emailPlaceholder": "name@example.com",
+    "passwordLabel": "Пароль",
+    "confirmPasswordLabel": "Подтвердите пароль",
+    "submit": "Зарегистрироваться",
+    "submitting": "Создание...",
+    "error": "Ошибка при регистрации. Возможно, email уже занят.",
+    "passwordMismatch": "Пароли не совпадают",
+    "hasAccount": "Уже есть аккаунт?",
+    "login": "Войти"
   }
 }
