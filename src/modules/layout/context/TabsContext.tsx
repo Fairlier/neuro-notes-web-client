@@ -54,12 +54,6 @@ export function TabsProvider({ children }: { children: ReactNode }) {
         return match ? match[1] : null;
     }, [location.pathname]);
 
-    useEffect(() => {
-        if (activeTabId && activeTabId !== "new" && activeTabId !== lastActiveTabId) {
-            setLastActiveTabId(activeTabId);
-        }
-    }, [activeTabId, lastActiveTabId]);
-
     const openNoteInCurrentTab = useCallback((id: string, title: string, sourceType?: string) => {
         setTabs((prev) => {
             const tabIndex = prev.findIndex((t) => t.id === id);
@@ -96,6 +90,10 @@ export function TabsProvider({ children }: { children: ReactNode }) {
             );
         });
 
+        if (id !== "new") {
+            setLastActiveTabId(id);
+        }
+
         if (!location.pathname.includes(id)) {
             navigate(`/notes/${id}`);
         }
@@ -107,14 +105,15 @@ export function TabsProvider({ children }: { children: ReactNode }) {
 
             if (activeTabId === id) {
                 if (newTabs.length > 0) {
-                    navigate(`/notes/${newTabs[newTabs.length - 1].id}`);
+                    const nextTabId = newTabs[newTabs.length - 1].id;
+                    setLastActiveTabId(nextTabId);
+                    navigate(`/notes/${nextTabId}`);
                 } else {
+                    setLastActiveTabId(null);
                     navigate("/notes");
                 }
-            }
-
-            if (lastActiveTabId === id) {
-                setLastActiveTabId(null);
+            } else if (lastActiveTabId === id) {
+                setLastActiveTabId(activeTabId && activeTabId !== "new" ? activeTabId : null);
             }
 
             return newTabs;
@@ -122,6 +121,9 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     }, [navigate, activeTabId, lastActiveTabId]);
 
     const setActiveTab = useCallback((id: string) => {
+        if (id !== "new") {
+            setLastActiveTabId(id);
+        }
         navigate(`/notes/${id}`);
     }, [navigate]);
 
