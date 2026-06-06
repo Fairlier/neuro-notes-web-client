@@ -10,6 +10,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Checkbox } from "@/shared/ui/checkbox.tsx";
 import {
     Loader2,
     CheckCircle2,
@@ -23,13 +24,14 @@ import {
     RefreshCcw,
     Settings,
     ScanText,
-    type LucideIcon,
     FileJson,
     MessageSquare,
     MessageSquareText,
-    FileChartColumnIncreasing
+    FileChartColumnIncreasing,
+    Bot,
+    Tag,
+    type LucideIcon
 } from "lucide-react";
-import { Checkbox } from "@/shared/ui/checkbox.tsx";
 
 const BUTTON_CLASS = "w-full sm:w-[220px] h-10 flex items-center justify-center gap-2 transition-all shrink-0";
 
@@ -195,7 +197,92 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 2. ОПЕРАЦИИ */}
+            {/* 2. АВТОМАТИЗАЦИЯ ИИ */}
+            <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-primary" />
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                        {t('settings.automation.title')}
+                    </h2>
+                </div>
+                <div className="p-6 space-y-4">
+
+                    {/* Транскрибация */}
+                    <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
+                        <div className="space-y-0.5">
+                            <label htmlFor="auto-transcription" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
+                                <ScanText className="h-4 w-4 text-primary" />
+                                {t('settings.automation.transcription')}
+                            </label>
+                            <p className="text-xs text-muted-foreground ml-6">
+                                {t('settings.automation.transcriptionDesc')}
+                            </p>
+                        </div>
+                        <Checkbox
+                            id="auto-transcription"
+                            checked={(formData.transcription as AIOperationSettingsDto)?.isAutomatic || false}
+                            onCheckedChange={(c) => updateOperationSetting('transcription', 'isAutomatic', c === true)}
+                        />
+                    </div>
+
+                    {/* Структурирование */}
+                    <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
+                        <div className="space-y-0.5">
+                            <label htmlFor="auto-structuring" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
+                                <FileChartColumnIncreasing className="h-4 w-4 text-primary" />
+                                {t('settings.automation.structuring')}
+                            </label>
+                            <p className="text-xs text-muted-foreground ml-6">
+                                {t('settings.automation.structuringDesc')}
+                            </p>
+                        </div>
+                        <Checkbox
+                            id="auto-structuring"
+                            checked={(formData.structuring as AIOperationSettingsDto)?.isAutomatic || false}
+                            onCheckedChange={(c) => updateOperationSetting('structuring', 'isAutomatic', c === true)}
+                        />
+                    </div>
+
+                    {/* Резюмирование */}
+                    <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
+                        <div className="space-y-0.5">
+                            <label htmlFor="auto-summarization" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
+                                <FileJson className="h-4 w-4 text-primary" />
+                                {t('settings.automation.summarization')}
+                            </label>
+                            <p className="text-xs text-muted-foreground ml-6">
+                                {t('settings.automation.summarizationDesc')}
+                            </p>
+                        </div>
+                        <Checkbox
+                            id="auto-summarization"
+                            checked={(formData.summarization as AIOperationSettingsDto)?.isAutomatic || false}
+                            onCheckedChange={(c) => updateOperationSetting('summarization', 'isAutomatic', c === true)}
+                        />
+                    </div>
+
+                    {/* Классификация */}
+                    <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
+                        <div className="space-y-0.5">
+                            <label htmlFor="auto-classification" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
+                                <Tag className="h-4 w-4 text-primary" />
+                                {t('settings.automation.classification')}
+                            </label>
+                            <p className="text-xs text-muted-foreground ml-6">
+                                {t('settings.automation.classificationDesc')}
+                            </p>
+                        </div>
+                        <Checkbox
+                            id="auto-classification"
+                            checked={(formData.classification as AIOperationSettingsDto)?.isAutomatic || false}
+                            onCheckedChange={(c) => updateOperationSetting('classification', 'isAutomatic', c === true)}
+                        />
+                    </div>
+
+                </div>
+            </section>
+
+            {/* 3. ОПЕРАЦИИ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <Zap className="h-4 w-4 text-primary" />
@@ -212,7 +299,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 3. КЛЮЧИ */}
+            {/* 4. КЛЮЧИ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <KeyRound className="h-4 w-4 text-primary" />
@@ -299,7 +386,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 4. ДЕЙСТВИЯ */}
+            {/* 5. ДЕЙСТВИЯ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="p-6">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -326,7 +413,7 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 5. УВЕДОМЛЕНИЯ */}
+            {/* 6. УВЕДОМЛЕНИЯ */}
             {(successMsg || resetMsg) && (
                 <section className={`
                     border rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4

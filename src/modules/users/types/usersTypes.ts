@@ -19,6 +19,7 @@ export interface AIOperationSettingsDto {
     targetLanguage?: string | null;
     customPrompt?: string | null;
     useCustomPrompt: boolean;
+    isAutomatic?: boolean;
 }
 
 export interface UserAIProfileResponse {
@@ -33,6 +34,9 @@ export interface UserAIProfileResponse {
     summarization?: AIOperationSettingsDto;
     globalChat?: AIOperationSettingsDto;
     noteChat?: AIOperationSettingsDto;
+
+    classification?: AIOperationSettingsDto;
+
     providerSettings: Record<string, Record<string, string>>;
 }
 

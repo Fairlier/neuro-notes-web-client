@@ -34,6 +34,17 @@
       "title": "General Parameters",
       "globalLanguage": "Global Language (ISO)"
     },
+    "automation": {
+      "title": "AI Automation",
+      "transcription": "Audio Transcription",
+      "transcriptionDesc": "Conversion of audio to text immediately after the file is uploaded.",
+      "structuring": "Text Structuring",
+      "structuringDesc": "Creation of structured text immediately after creating a note and editing the draft text or transcribing audio.",
+      "summarization": "Text Summarization",
+      "summarizationDesc": "Creation of a summary immediately after creating or editing the structured text.",
+      "classification": "Note Categorization",
+      "classificationDesc": "Determination of the note category after creating a note or editing the draft text."
+    },
     "operations": {
       "title": "Operations Settings",
       "provider": "Provider",

@@ -52,8 +52,7 @@ export default function NoteWorkspace() {
         enabled: Boolean(id) && id !== 'new',
         refetchInterval: (query) => {
             const currentNote = query.state.data;
-            const isProcessing = currentNote?.isProcessing || currentNote?.status === 'Pending';
-            return isProcessing ? 3000 : false;
+            return currentNote?.isProcessing ? 3000 : false;
         },
     });
 
@@ -316,7 +315,7 @@ export default function NoteWorkspace() {
                         />
                     )}
 
-                    {!isCreating && note && (note.isProcessing || note.status === 'Pending') && (
+                    {!isCreating && note && note.isProcessing && (
                         <div className="h-[3px] w-full bg-muted/20 overflow-hidden shrink-0">
                             <div
                                 className="h-full w-1/3 rounded-full animate-shuttle bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"
