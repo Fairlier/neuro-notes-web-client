@@ -34,8 +34,6 @@ export function ThemeProvider({
 
     const setTheme = (newTheme: Theme) => {
         setThemeState(newTheme);
-        // TODO: Здесь можно добавить API-запрос для сохранения темы в профиле БД
-        // themeApi.updateProfileTheme(newTheme);
     };
 
     return (

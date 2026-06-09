@@ -211,7 +211,9 @@
     "submitting": "Signing in...",
     "error": "Invalid email or password",
     "noAccount": "Don't have an account?",
-    "register": "Sign Up"
+    "register": "Sign Up",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "register": {
     "title": "Create Account",
@@ -225,6 +227,18 @@
     "error": "Registration failed. The email may already be taken.",
     "passwordMismatch": "Passwords do not match",
     "hasAccount": "Already have an account?",
-    "login": "Sign In"
+    "login": "Sign In",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "showConfirmPassword": "Show confirm password",
+    "hideConfirmPassword": "Hide confirm password"
+  },
+  "audioRecorder": {
+    "errors": {
+      "generic": "Could not access the microphone. Please check your browser permissions.",
+      "permissionDenied": "Microphone access was denied. Please allow access in your browser settings.",
+      "noMicrophone": "No microphone was found on this device.",
+      "notReadable": "The microphone is currently unavailable or being used by another application."
+    }
   }
 }

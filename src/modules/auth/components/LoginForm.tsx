@@ -27,12 +27,7 @@ export const LoginForm = () => {
             navigate("/");
         } catch (err: unknown) {
             console.error("Login error", err);
-
-            if (err instanceof Error) {
-                setError(err.message || t('login.error'));
-            } else {
-                setError(t('login.error'));
-            }
+            setError(t('login.error'));
         } finally {
             setIsLoading(false);
         }
@@ -57,7 +52,9 @@ export const LoginForm = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">{t('login.emailLabel')}</label>
+                    <label className="text-sm font-medium text-foreground">
+                        {t('login.emailLabel')}
+                    </label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -72,7 +69,9 @@ export const LoginForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">{t('login.passwordLabel')}</label>
+                    <label className="text-sm font-medium text-foreground">
+                        {t('login.passwordLabel')}
+                    </label>
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -87,7 +86,7 @@ export const LoginForm = () => {
                             type="button"
                             onClick={() => setShowPassword((prev) => !prev)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                         >
                             {showPassword ? (
                                 <EyeOff className="h-4 w-4" />

@@ -173,7 +173,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
     return (
         <form onSubmit={handleSave} className="space-y-6 w-full pb-10">
 
-            {/* 1. ОБЩИЕ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <Settings2 className="h-4 w-4 text-primary" />
@@ -197,7 +196,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 2. АВТОМАТИЗАЦИЯ ИИ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <Bot className="h-4 w-4 text-primary" />
@@ -207,7 +205,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
                 <div className="p-6 space-y-4">
 
-                    {/* Транскрибация */}
                     <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
                         <div className="space-y-0.5">
                             <label htmlFor="auto-transcription" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
@@ -225,7 +222,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                         />
                     </div>
 
-                    {/* Структурирование */}
                     <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
                         <div className="space-y-0.5">
                             <label htmlFor="auto-structuring" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
@@ -243,7 +239,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                         />
                     </div>
 
-                    {/* Резюмирование */}
                     <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
                         <div className="space-y-0.5">
                             <label htmlFor="auto-summarization" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
@@ -261,7 +256,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                         />
                     </div>
 
-                    {/* Классификация */}
                     <div className="flex items-center justify-between gap-4 bg-muted/20 p-4 rounded-xl border border-border/50">
                         <div className="space-y-0.5">
                             <label htmlFor="auto-classification" className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
@@ -282,7 +276,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 3. ОПЕРАЦИИ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <Zap className="h-4 w-4 text-primary" />
@@ -299,7 +292,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 4. КЛЮЧИ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                     <KeyRound className="h-4 w-4 text-primary" />
@@ -308,7 +300,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                     </h2>
                 </div>
                 <div className="p-6 space-y-6">
-                    {/* Форма добавления */}
                     <div className="flex flex-col sm:flex-row gap-3 items-end bg-muted/10 p-5 rounded-2xl">
                         <div className="w-full sm:flex-1 space-y-2">
                             <label className="text-sm font-semibold ml-1">
@@ -350,7 +341,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                         </div>
                     </div>
 
-                    {/* Список ключей */}
                     <div className="space-y-4">
                         {Object.entries(formData.providerSettings || {}).map(([providerName, settingsObj]) => (
                             <div key={providerName} className="space-y-2">
@@ -386,7 +376,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 5. ДЕЙСТВИЯ */}
             <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                 <div className="p-6">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -413,7 +402,6 @@ function SettingsForm({ initialData, systemConfig }: SettingsFormProps) {
                 </div>
             </section>
 
-            {/* 6. УВЕДОМЛЕНИЯ */}
             {(successMsg || resetMsg) && (
                 <section className={`
                     border rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4

@@ -14,14 +14,12 @@ interface NoteCardProps {
 export const NoteCard = ({ note, onClick }: NoteCardProps) => {
     const { t, i18n } = useTranslation();
 
-    // Функция форматирования даты с учётом локали
     const formatDate = (dateString: string) => {
         const locale = i18n.language === 'ru' ? ru : enUS;
         const dateFormat = i18n.language === 'ru' ? "d MMM yyyy" : "MMM d, yyyy";
         return format(new Date(dateString), dateFormat, { locale });
     };
 
-    // Получение локализованной категории
     const getCategoryLabel = (category: string) =>
         t(`note.category.${category}`, { defaultValue: category });
 
@@ -41,7 +39,6 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
                 "hover:border-primary/30 hover:shadow-md transition-all cursor-pointer"
             )}
         >
-            {/* 1. ЛЕВАЯ ПОЛОСКА (Статус) */}
             <div
                 className={cn(
                     "absolute left-0 top-0 bottom-0 w-1 transition-colors duration-300",
@@ -49,10 +46,8 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
                 )}
             />
 
-            {/* Контент карточки: ВЕРХНЯЯ СТРОКА */}
             <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {/* Верхняя иконка в контейнере w-8 */}
                     <div className="h-8 w-8 rounded-md flex items-center justify-center shrink-0 bg-muted text-muted-foreground">
                         {note.sourceType === 'AudioFile' ? (
                             <FileAudio className="h-4 w-4" />
@@ -67,7 +62,6 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
                 </div>
             </div>
 
-            {/* Контент карточки: НИЖНЯЯ СТРОКА */}
             <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1">
                 <div className="flex items-center gap-2">
                     <div className="w-8 flex justify-center shrink-0">
@@ -82,7 +76,6 @@ export const NoteCard = ({ note, onClick }: NoteCardProps) => {
                 )}
             </div>
 
-            {/* 2. НИЖНЯЯ ПОЛОСКА (Анимация обработки) */}
             {note.isProcessing && (
                 <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-muted/20 overflow-hidden">
                     <div

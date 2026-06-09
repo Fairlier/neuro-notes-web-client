@@ -55,8 +55,10 @@ api.interceptors.response.use(
         const isUnauthorized = error.response?.status === 401;
         const isRetry = originalRequest._retry;
         const isRefreshUrl = originalRequest.url?.includes('/auth/refresh');
+        const isLoginUrl = originalRequest.url?.includes('/auth/login');
+        const isRegisterUrl = originalRequest.url?.includes('/auth/register');
 
-        if (isUnauthorized && !isRetry && !isRefreshUrl) {
+        if (isUnauthorized && !isRetry && !isRefreshUrl && !isLoginUrl && !isRegisterUrl) {
             if (isRefreshing) {
                 return new Promise<string>((resolve, reject) => {
                     failedQueue.push({ resolve, reject });

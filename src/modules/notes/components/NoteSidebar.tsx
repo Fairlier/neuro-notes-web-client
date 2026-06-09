@@ -45,7 +45,6 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
     const { t, i18n } = useTranslation();
     const queryClient = useQueryClient();
 
-    // Функция форматирования даты с учётом локали
     const formatDate = (dateString: string) => {
         const dateFormat = t('workspace.dateFormat');
         const locale = i18n.language === 'ru' ? ru : enUS;
@@ -195,7 +194,6 @@ export const NoteSidebar = ({ note, sidebarView, setSidebarView, isRightSidebarO
                             </div>
                         </section>
 
-                        {/* БЛОК 2: Действия */}
                         <section className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
                             <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center gap-2">
                                 <Zap className="h-3.5 w-3.5 text-primary" />

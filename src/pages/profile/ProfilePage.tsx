@@ -68,7 +68,6 @@ export default function ProfilePage() {
         <div className="min-h-screen w-full bg-background selection:bg-primary/10 py-12 px-4 overflow-y-auto">
             <div className="max-w-xl mx-auto space-y-6">
 
-                {/* ГЛАВНЫЙ ЗАГОЛОВОК */}
                 <div className="flex items-center justify-center gap-3 mb-4">
                     <div className="p-2.5 bg-primary/10 rounded-xl">
                         <User className="h-7 w-7 text-primary" />
@@ -78,7 +77,6 @@ export default function ProfilePage() {
                     </h1>
                 </div>
 
-                {/* БЛОК 1: Фото профиля */}
                 <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                         <Camera className="h-4 w-4 text-primary" />
@@ -88,7 +86,6 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="p-6 flex flex-col sm:flex-row items-center justify-between gap-8">
-                        {/* Аватар без наложений */}
                         <div className="h-32 w-32 rounded-3xl bg-muted border-2 border-border flex items-center justify-center overflow-hidden shadow-inner transition-all hover:border-primary/30">
                             {profile?.avatarUrl ? (
                                 <img src={profile.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
@@ -97,7 +94,6 @@ export default function ProfilePage() {
                             )}
                         </div>
 
-                        {/* Кнопки в вертикальном стеке одинакового размера */}
                         <div className="flex flex-col gap-3 w-full sm:w-auto">
                             <input
                                 type="file"
@@ -132,7 +128,6 @@ export default function ProfilePage() {
                     </div>
                 </section>
 
-                {/* БЛОК 2: Настройки пользователя */}
                 <section className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center gap-2">
                         <Settings className="h-4 w-4 text-primary" />
@@ -193,7 +188,6 @@ export default function ProfilePage() {
                     </form>
                 </section>
 
-                {/* БЛОК 3: Завершение сеанса */}
                 <section className="bg-destructive/[0.03] border border-destructive/10 rounded-2xl p-6 shadow-sm">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
@@ -215,7 +209,6 @@ export default function ProfilePage() {
                         </Button>
                     </div>
                 </section>
-
             </div>
         </div>
     );

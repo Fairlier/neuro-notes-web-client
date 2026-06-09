@@ -204,7 +204,6 @@ export const GlobalChatPanel = () => {
                 </div>
             </ScrollArea>
 
-            {/* Плавающая область ввода поверх чата */}
             <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 sm:px-8 sm:pb-8 pt-1 bg-gradient-to-t from-background via-background/80 to-transparent z-20 pointer-events-none">
                 <div className="max-w-5xl mx-auto pointer-events-auto">
                     <div className="relative bg-background rounded-xl border border-border shadow-xl transition-all overflow-hidden flex flex-col focus-within:ring-2 focus-within:ring-primary/20">

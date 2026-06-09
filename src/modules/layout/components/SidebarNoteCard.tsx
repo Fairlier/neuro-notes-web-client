@@ -47,7 +47,6 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
                     : "text-muted-foreground hover:bg-background/50 hover:text-foreground border-transparent"
             )}
         >
-            {/* 1. Левая полоска статуса */}
             <div
                 className={cn(
                     "absolute left-0 top-0 bottom-0 w-1 transition-colors duration-300",
@@ -55,9 +54,7 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
                 )}
             />
 
-            {/* 2. Верхняя часть: Иконка + Заголовок */}
             <div className="flex items-center gap-2.5 w-full min-w-0">
-                {/* Иконка в контейнере w-7 */}
                 <div className={cn(
                     "h-7 w-7 rounded-md flex items-center justify-center shrink-0 transition-colors",
                     isActive ? "bg-muted text-foreground" : "bg-muted/50 text-muted-foreground group-hover:bg-muted"
@@ -77,9 +74,7 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
                 </span>
             </div>
 
-            {/* 3. Метаданные (Дата и категория) */}
             <div className="flex items-center gap-2.5 text-[11px] text-muted-foreground w-full">
-                {/* Обертка w-7 для идеальной центровки под верхней иконкой */}
                 <div className="w-7 flex justify-center shrink-0">
                     <Calendar className="h-3 w-3" />
                 </div>
@@ -95,7 +90,6 @@ export const SidebarNoteCard = ({ note, isActive, onClick }: SidebarNoteCardProp
                 </div>
             </div>
 
-            {/* 4. Нижняя полоска (Анимация обработки) */}
             {note.isProcessing && (
                 <>
                     <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-muted/20 overflow-hidden">

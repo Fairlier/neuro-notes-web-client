@@ -159,7 +159,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 isOpen ? "w-[280px]" : "w-[70px]"
             )}
         >
-            {/* 1. ШАПКА */}
             <div className="flex items-center h-16 flex-shrink-0 w-full relative overflow-hidden">
                 <div className={cn(
                     "absolute left-[15px] flex items-center gap-2 font-bold text-foreground select-none",
@@ -184,7 +183,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 </Button>
             </div>
 
-            {/* 2. ДЕЙСТВИЯ */}
             <div className="px-[15px] pb-3 flex flex-col items-center gap-2 flex-shrink-0 w-full">
                 <Link to="/chat" className={cn("flex transition-all duration-300", isOpen ? "w-full" : "w-10")}>
                     <Button
@@ -232,11 +230,9 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
 
             <Separator className={cn("bg-border transition-all duration-300", isOpen ? "w-auto mx-[15px]" : "w-10 mx-auto")} />
 
-            {/* 3. СПИСОК ЗАМЕТОК И ПОИСК */}
             <ScrollArea className="flex-1 bg-transparent">
                 {isOpen ? (
                     <div className="w-[280px] max-w-[280px] py-3 pl-[15px] pr-[15px] flex flex-col overflow-hidden">
-                        {/* Поиск */}
                         <div className="flex items-center gap-2 mb-3 w-full max-w-full">
                             <div className="relative flex-1 min-w-0">
                                 <Search className="absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground left-3" />
@@ -258,7 +254,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                             </Button>
                         </div>
 
-                        {/* Карточки */}
                         {isLoading ? (
                             <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground"/></div>
                         ) : notes.length === 0 ? (
@@ -276,7 +271,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                     />
                                 ))}
 
-                                {/* Элемент для триггера загрузки */}
                                 <div ref={loadMoreRef} className="w-full flex justify-center py-2 h-8">
                                     {isFetchingNextPage && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                                 </div>
@@ -286,10 +280,8 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 ) : null}
             </ScrollArea>
 
-            {/* 4. ПОДВАЛ С ПРОФИЛЕМ И НАСТРОЙКАМИ */}
             <div className="p-[15px] border-t border-border bg-background/50 flex flex-col items-center gap-2 flex-shrink-0 w-full transition-all duration-300">
 
-                {/* Группа Настройки + Тема */}
                 <div className={cn("flex w-full transition-all duration-300", isOpen ? "flex-row gap-2" : "flex-col-reverse gap-2")}>
                     <Button
                         variant="ghost"
@@ -318,7 +310,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                     </Button>
                 </div>
 
-                {/* Кнопка перехода в профиль */}
                 <Button
                     variant="ghost"
                     onClick={() => navigate('/profile')}
@@ -329,9 +320,7 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                 >
                     {isOpen ? (
                         <>
-                            {/* Левая часть с аватаркой и именем */}
                             <div className="flex items-center flex-1 min-w-0">
-                                {/* Контейнер 40x40 для аватарки - выравнивает центр аватарки с центром иконки Settings */}
                                 <div className="w-10 h-10 flex items-center justify-center shrink-0">
                                     <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs shadow-sm overflow-hidden">
                                         {isProfileLoading ? (
@@ -347,7 +336,6 @@ export const AppSidebar = ({ isOpen, toggle }: AppSidebarProps) => {
                                     <span className="text-sm font-medium text-foreground truncate w-full">{displayName}</span>
                                 </div>
                             </div>
-                            {/* Контейнер 40x40 для стрелки - выравнивает центр стрелки с центром иконки темы */}
                             <div className="w-10 h-10 flex items-center justify-center shrink-0">
                                 <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
                             </div>

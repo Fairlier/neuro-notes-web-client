@@ -45,7 +45,6 @@ interface NoteToolbarProps {
 export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEditMode }: NoteToolbarProps) => {
     const { t, i18n } = useTranslation();
 
-    // Функция форматирования даты с учётом локали
     const formatDate = (dateString: string) => {
         const locale = i18n.language === 'ru' ? ru : enUS;
         // Используем более читаемый формат для тулбара
@@ -53,10 +52,8 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
         return format(new Date(dateString), dateFormat, { locale });
     };
 
-    // Получение локализованного названия статуса
     const getStatusLabel = (status: NoteStatus) => t(`note.status.${status}`);
 
-    // Получение локализованного названия режима просмотра
     const getViewModeLabel = (mode: ViewMode) => t(`note.viewMode.${mode}`);
 
     const availableModes: { id: ViewMode; icon: LucideIcon }[] = [];
@@ -72,7 +69,6 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
 
     return (
         <div className="h-10 border-b border-border bg-background flex items-center justify-between px-4 flex-shrink-0 select-none min-w-0">
-            {/* ЛЕВАЯ ЧАСТЬ: СТАТУС И ДАТА */}
             <div className="flex items-center gap-2 min-w-0 overflow-hidden">
                 <StatusBadge status={note.status} label={getStatusLabel(note.status)} />
 
@@ -83,7 +79,6 @@ export const NoteToolbar = ({ note, viewMode, setViewMode, isEditing, toggleEdit
                 </span>
             </div>
 
-            {/* ПРАВАЯ ЧАСТЬ: ПЕРЕКЛЮЧАТЕЛЬ И РЕДАКТИРОВАНИЕ */}
             <div className="flex items-center gap-2 flex-shrink-0">
                 <div className="relative flex p-1 bg-muted/50 rounded-lg border border-border/40 h-8 items-center">
                     {availableModes.map((mode) => {

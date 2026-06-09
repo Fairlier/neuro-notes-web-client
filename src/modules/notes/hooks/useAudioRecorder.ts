@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export const useAudioRecorder = () => {
+    const { t } = useTranslation();
+
     const [isRecording, setIsRecording] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [audioBlob, setAudioBlob] = useState<Blob | File | null>(null);
@@ -58,6 +61,24 @@ export const useAudioRecorder = () => {
         animationRef.current = requestAnimationFrame(drawVisualizer);
     };
 
+    const getMicrophoneErrorMessage = (err: unknown) => {
+        if (err instanceof DOMException) {
+            switch (err.name) {
+                case 'NotAllowedError':
+                case 'PermissionDeniedError':
+                    return t('audioRecorder.errors.permissionDenied');
+                case 'NotFoundError':
+                    return t('audioRecorder.errors.noMicrophone');
+                case 'NotReadableError':
+                    return t('audioRecorder.errors.notReadable');
+                default:
+                    return t('audioRecorder.errors.generic');
+            }
+        }
+
+        return t('audioRecorder.errors.generic');
+    };
+
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -76,7 +97,10 @@ export const useAudioRecorder = () => {
                 stream.getTracks().forEach(track => track.stop());
             };
 
-            const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            const AudioContextClass =
+                window.AudioContext ||
+                (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+
             const audioCtx = new AudioContextClass();
             const analyser = audioCtx.createAnalyser();
             analyser.fftSize = 256;
@@ -92,15 +116,14 @@ export const useAudioRecorder = () => {
             setIsPaused(false);
             setRecordingTime(0);
 
-            timerRef.current = setInterval(() => {
+            timerRef.current = window.setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
 
             drawVisualizer();
-
         } catch (err) {
-            console.error("Ошибка доступа к микрофону:", err);
-            alert("Не удалось получить доступ к микрофону. Проверьте разрешения в браузере.");
+            console.error('Microphone access error:', err);
+            alert(getMicrophoneErrorMessage(err));
         }
     };
 
@@ -117,7 +140,7 @@ export const useAudioRecorder = () => {
         if (mediaRecorderRef.current?.state === 'paused') {
             mediaRecorderRef.current.resume();
             setIsPaused(false);
-            timerRef.current = setInterval(() => {
+            timerRef.current = window.setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
             audioCtxRef.current?.resume();
@@ -166,7 +189,9 @@ export const useAudioRecorder = () => {
         };
     }, []);
 
-    const formattedTime = `${Math.floor(recordingTime / 60).toString().padStart(2, '0')}:${(recordingTime % 60).toString().padStart(2, '0')}`;
+    const formattedTime = `${Math.floor(recordingTime / 60).toString().padStart(2, '0')}:${(recordingTime % 60)
+        .toString()
+        .padStart(2, '0')}`;
 
     return {
         isRecording,

@@ -26,7 +26,6 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
     return (
         <div className="mt-4 p-4 bg-muted/50 rounded-lg border border-border animate-in fade-in duration-200 flex flex-col gap-5">
 
-            {/* Шапка с зарезервированным местом под кнопку (h-7) */}
             <div className="flex items-center justify-between h-7 -mb-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     {t('noteCreator.filters.title')}
@@ -45,7 +44,6 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
                 </Button>
             </div>
 
-            {/* Блок Фильтров */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                     <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
@@ -115,7 +113,6 @@ export const NoteFilters = ({ filters, onChange, onClear, isSemanticSearch }: No
 
             <div className="h-px bg-border w-full" />
 
-            {/* Блок Сортировки */}
             <div className={cn(
                 "flex flex-col gap-3 transition-opacity",
                 isSemanticSearch && "opacity-50"

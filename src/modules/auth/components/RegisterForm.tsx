@@ -35,12 +35,7 @@ export const RegisterForm = () => {
             navigate("/login");
         } catch (err: unknown) {
             console.error("Registration error", err);
-
-            if (err instanceof Error) {
-                setError(err.message || t('register.error'));
-            } else {
-                setError(t('register.error'));
-            }
+            setError(t('register.error'));
         } finally {
             setIsLoading(false);
         }
@@ -65,7 +60,9 @@ export const RegisterForm = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">{t('register.emailLabel')}</label>
+                    <label className="text-sm font-medium text-foreground">
+                        {t('register.emailLabel')}
+                    </label>
                     <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -80,7 +77,9 @@ export const RegisterForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">{t('register.passwordLabel')}</label>
+                    <label className="text-sm font-medium text-foreground">
+                        {t('register.passwordLabel')}
+                    </label>
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -95,7 +94,7 @@ export const RegisterForm = () => {
                             type="button"
                             onClick={() => setShowPassword((prev) => !prev)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? t('register.hidePassword') : t('register.showPassword')}
                         >
                             {showPassword ? (
                                 <EyeOff className="h-4 w-4" />
@@ -107,7 +106,9 @@ export const RegisterForm = () => {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-medium text-foreground">{t('register.confirmPasswordLabel')}</label>
+                    <label className="text-sm font-medium text-foreground">
+                        {t('register.confirmPasswordLabel')}
+                    </label>
                     <div className="relative">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -122,7 +123,7 @@ export const RegisterForm = () => {
                             type="button"
                             onClick={() => setShowConfirmPassword((prev) => !prev)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                            aria-label={showConfirmPassword ? t('register.hideConfirmPassword') : t('register.showConfirmPassword')}
                         >
                             {showConfirmPassword ? (
                                 <EyeOff className="h-4 w-4" />

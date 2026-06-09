@@ -48,7 +48,6 @@ export const NoteCreator = () => {
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [isFiltersOpen, setFiltersOpen] = useState(false);
 
-    // Функция форматирования даты для названия аудиозаметки
     const formatDateForTitle = () => {
         const locale = i18n.language === 'ru' ? 'ru-RU' : 'en-US';
         return new Date().toLocaleString(locale);
