@@ -1,0 +1,15 @@
+services:
+  # ==========================================
+  # Service: Neuro Notes Web Client
+  # ==========================================
+  neuro-notes-web:
+    image: neuro-notes-web-client
+    container_name: neuro-notes-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL}
+    restart: unless-stopped
+    ports:
+      - "${CLIENT_PORT}:80"
