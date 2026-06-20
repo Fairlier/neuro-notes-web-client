@@ -1,73 +1,7 @@
-# React + TypeScript + Vite
+# Клиентское веб-приложение информационной системы NeuroNotes 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+В данном репозитории представлен исходный код клиентского веб-приложения информационной системы интеллектуальной обработки аудио-текстовых данных, созданной в ходе выполнения выпускной квалификационной работы. Исходный код серверного приложения представлен в связанном репозитории [neuro-notes](https://github.com/Fairlier/neuro-notes). Приложение предоставляет графический интерфейс для управления пользовательскими записями, контроля процессов машинного обучения и настройки системных параметров. Функционал включает создание аудиозаметок со встроенной визуализацией частотного спектра, редактирование текстов с поддержкой разметки Markdown, семантический поиск и работу с изолированными диалоговыми панелями для общения с базой знаний пользователя. 
 
-Currently, two official plugins are available:
+Архитектура клиентского приложения реализована по модели одностраничного веб-приложения (SPA) с применением языка строгой статической типизации TypeScript. Для построения пользовательского интерфейса использована библиотека React 19. Управление структурой проекта опирается на принципы методологии функционально-сегментированного проектирования (Feature-Sliced Design). Маршрутизация организована средствами библиотеки React Router. Управление серверным состоянием, кэшированием запросов и синхронизацией данных реализовано с помощью TanStack Query. Стилизация компонентов выполнена на базе фреймворка Tailwind CSS с интеграцией интерфейсных примитивов Radix UI. 
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Пользовательский интерфейс адаптирован для управления гибридной интеллектуальной обработкой. В разделе настроек профиля реализован механизм конфигурации используемых моделей машинного обучения для каждой отдельной задачи: транскрибации, структурирования, резюмирования и диалогового поиска. Предусмотрена возможность задания пользовательских системных инструкций (промптов), управляющих поведением генеративных сетей. Взаимодействие с контекстом организовано через два режима диалогового поиска: по изолированному контексту отдельной заметки и по глобальному контексту всей совокупности пользовательских записей с применением технологий векторного поиска.
